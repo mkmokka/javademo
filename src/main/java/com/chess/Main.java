@@ -1,139 +1,108 @@
 package com.chess;
 
-import com.chess.model.Board;
-import com.chess.view.GameFrame;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import com.chess.model.*;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+public class Main extends JFrame {
+    private Board board;
+    private int selectedRow = -1;
+    private int selectedCol = -1;
+    private JPanel boardPanel;
 
-@SpringBootApplication
-@RestController
-public class Main {
+    public Main() {
+        board = new Board();
+        setTitle("Chess Game");
+        setSize(600, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
 
-    private static final Map<String, Board> localMatches = new HashMap<>();
-
-    public static void main(String[] args) {
-        SpringApplication.run(Main.class, args);
-    }
-
-    // আপনার 'course' ডাটাবেজ ব্যবহার করে নতুন 'chess' ডাটাবেজ অটো-ক্রিয়েট করার
-    // মেথড
-    private Connection getDatabaseConnection() throws Exception {
-        String fullUrl = System.getenv("DB_URL"); // Render থেকে আপনার 'course' এর URL আসবে
-        String user = System.getenv("DB_USER");
-        String password = System.getenv("DB_PASSWORD");
-
-        Class.forName("com.mysql.cj.jdbc.Driver");
-
-        // ১. প্রথমে আপনার বর্তমান 'course' ডাটাবেজেই কানেক্ট হওয়া
-        try (Connection conn = DriverManager.getConnection(fullUrl, user, password);
-                Statement stmt = conn.createStatement()) {
-
-            // ২. সার্ভারের ভেতরে নতুন 'chess' নামে ডাটাবেজটি তৈরি করা (যদি না থাকে)
-            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS chess");
-        } catch (Exception e) {
-            System.out.println("Database auto-creation log: " + e.getMessage());
-        }
-
-        // ৩. এবার ইউআরএল-এর 'course' অংশটি পরিবর্তন করে নতুন 'chess' ডাটাবেজের ডাইনামিক
-        // কানেকশন তৈরি করা
-        String chessUrl = fullUrl;
-        if (fullUrl.contains("/course")) {
-            chessUrl = fullUrl.replace("/course", "/chess");
-        }
-
-        // ৪. নতুন 'chess' ডাটাবেজের সাথে ফাইনাল কানেকশন রিটার্ন
-        return DriverManager.getConnection(chessUrl, user, password);
-    }
-
-    @GetMapping("/")
-    public String showMenu() {
-        return GameFrame.renderMenu();
-    }
-
-    @GetMapping("/start")
-    public String startMatch(@RequestParam String mode, @RequestParam(required = false) String code) {
-        if (mode.equalsIgnoreCase("single")) {
-            Board botBoard = new Board();
-            localMatches.put("bot", botBoard);
-            return GameFrame.renderHtml(botBoard, "single", "null");
-        }
-
-        String roomCode = (mode.equalsIgnoreCase("create")) ? UUID.randomUUID().toString().substring(0, 5).toUpperCase()
-                : code;
-        Board board = new Board();
-
-        try (Connection conn = getDatabaseConnection()) {
-            // নতুন 'chess' ডাটাবেজের ভেতরে মাল্টিপ্লেয়ার টেবিল তৈরি
-            try (PreparedStatement schemaStmt = conn.prepareStatement(
-                    "CREATE TABLE IF NOT EXISTS chess_rooms (" +
-                            "room_code VARCHAR(10) PRIMARY KEY, " +
-                            "current_turn VARCHAR(10))")) {
-                schemaStmt.executeUpdate();
+        boardPanel = new JPanel(new GridLayout(8, 8)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                drawBoard(g);
             }
+        };
 
-            if (mode.equalsIgnoreCase("create")) {
-                try (PreparedStatement insertStmt = conn.prepareStatement(
-                        "INSERT INTO chess_rooms (room_code, current_turn) VALUES (?, 'WHITE') " +
-                                "ON DUPLICATE KEY UPDATE room_code=room_code")) {
-                    insertStmt.setString(1, roomCode);
-                    insertStmt.executeUpdate();
-                }
-                localMatches.put(roomCode, board);
-            } else {
-                try (PreparedStatement checkStmt = conn
-                        .prepareStatement("SELECT room_code FROM chess_rooms WHERE room_code = ?")) {
-                    checkStmt.setString(1, roomCode);
-                    ResultSet rs = checkStmt.executeQuery();
-                    if (!rs.next()) {
-                        return "<h2>❌ Error: Invalid Joining Code! Room not found in Aiven Chess Database.</h2><a href='/'>Go Back</a>";
+        boardPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                int size = boardPanel.getWidth() / 8;
+                int col = e.getX() / size;
+                int row = e.getY() / size;
+
+                if (selectedRow == -1) {
+                    // প্রথম ক্লিক: ঘুটি সিলেকশন
+                    Piece p = board.getPiece(row, col);
+                    if (p != null && p.getColor() == board.getCurrentTurn()) {
+                        selectedRow = row;
+                        selectedCol = col;
+                    }
+                } else {
+                    // দ্বিতীয় ক্লিক: চাল দেওয়া
+                    boolean moved = board.makeMove(selectedRow, selectedCol, row, col);
+                    if (!moved) {
+                        // যদি চাল অবৈধ হয় এবং নিজের অন্য ঘুটিতে ক্লিক করে, তবে নতুন ঘুটি সিলেক্ট হবে
+                        Piece p = board.getPiece(row, col);
+                        if (p != null && p.getColor() == board.getCurrentTurn()) {
+                            selectedRow = row;
+                            selectedCol = col;
+                        } else {
+                            selectedRow = -1;
+                            selectedCol = -1;
+                        }
+                    } else {
+                        selectedRow = -1;
+                        selectedCol = -1;
                     }
                 }
-                if (!localMatches.containsKey(roomCode)) {
-                    localMatches.put(roomCode, board);
-                } else {
-                    board = localMatches.get(roomCode);
-                }
+                // থ্রেড ছাড়াই সরাসরি UI রিফ্রেশ করার ম্যাজিক লাইন!
+                boardPanel.repaint(); 
             }
-        } catch (Exception e) {
-            return "<h2>❌ Database Error: " + e.getMessage() + "</h2>" +
-                    "<p>দয়া করে নিশ্চিত করুন Render-এ DB_URL (course সহ URLটি), DB_USER, এবং DB_PASSWORD সঠিকভাবে সেট করা আছে কিনা।</p>"
-                    +
-                    "<a href='/'>Go Back</a>";
-        }
+        });
 
-        return GameFrame.renderHtml(board, "online", roomCode);
+        add(boardPanel);
+        setVisible(true);
     }
 
-    @GetMapping("/move")
-    public String handleMove(@RequestParam String mode, @RequestParam String code,
-            @RequestParam int fromR, @RequestParam int fromC,
-            @RequestParam int toR, @RequestParam int toC) {
+    private void drawBoard(Graphics g) {
+        int size = boardPanel.getWidth() / 8;
 
-        String key = mode.equalsIgnoreCase("single") ? "bot" : code;
-        Board board = localMatches.get(key);
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                // বোর্ড কালার করা
+                if ((r + c) % 2 == 0) g.setColor(new Color(240, 217, 181));
+                else g.setColor(new Color(181, 136, 99));
+                g.fillRect(c * size, r * size, size, size);
 
-        if (board == null) {
-            return "<h2>❌ Match session expired. Please restart.</h2><a href='/'>Go Back</a>";
+                // সিলেক্টেড ঘর হাইলাইট করা (হলুদ রঙে)
+                if (r == selectedRow && c == selectedCol) {
+                    g.setColor(new Color(255, 255, 0, 128));
+                    g.fillRect(c * size, r * size, size, size);
+                }
+
+                // স্ট্যান্ডার্ড নিয়ম অনুযায়ী সম্ভাব্য চালের ঘরগুলো হাইলাইট করা (সবুজ বর্ডার)
+                if (selectedRow != -1 && board.isValidMove(selectedRow, selectedCol, r, c)) {
+                    g.setColor(new Color(0, 255, 0, 150));
+                    g.drawRect(c * size + 2, r * size + 2, size - 4, size - 4);
+                }
+
+                // ঘুটি টেক্সট আকারে ড্র করা (এখানে আপনি ইমেজও বসাতে পারেন)
+                Piece p = board.getPiece(r, c);
+                if (p != null) {
+                    g.setColor(p.getColor() == PieceColor.WHITE ? Color.WHITE : Color.BLACK);
+                    g.setFont(new Font("Arial", Font.BOLD, 16));
+                    String text = p.getType().name().substring(0, 2);
+                    g.drawString(text, c * size + size / 4, r * size + size / 2 + 5);
+                }
+            }
         }
+    }
 
-        board.movePiece(fromR, fromC, toR, toC);
-
-        if (mode.equalsIgnoreCase("single")) {
-            board.makeBotMove();
-        }
-
-        return GameFrame.renderHtml(board, mode, code);
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(Main::new);
     }
 }
