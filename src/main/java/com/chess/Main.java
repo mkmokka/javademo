@@ -1,44 +1,48 @@
 package com.chess;
 
 import com.chess.model.*;
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpExchange;
 
-public class Main extends JFrame {
-    private Board board;
-    private int selectedRow = -1;
-    private int selectedCol = -1;
-    private JPanel boardPanel;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Map;
 
-    public Main() {
-        board = new Board();
-        setTitle("Chess Game");
-        setSize(600, 600);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
+public class Main {
+    private static Board board = new Board();
+    private static int selectedRow = -1;
+    private static int selectedCol = -1;
 
-        boardPanel = new JPanel(new GridLayout(8, 8)) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                drawBoard(g);
-            }
-        };
+    public static void main(String[] args) throws IOException {
+        // ডকার কন্টেইনারের জন্য ৮০৮০ পোর্টে লাইটওয়েট ওয়েব সার্ভার চালু করা হচ্ছে
+        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        server.createContext("/", new ChessHandler());
+        server.setExecutor(null); 
+        System.out.println("Chess Game Server started on http://localhost:8080");
+        server.start();
+    }
 
-        boardPanel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                int size = boardPanel.getWidth() / 8;
-                int col = e.getX() / size;
-                int row = e.getY() / size;
+    static class ChessHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String query = exchange.getRequestURI().getQuery();
+            String selectedId = "";
+
+            if (query != null && query.startsWith("click=")) {
+                String clickCoords = query.substring(6);
+                String[] coords = clickCoords.split("-");
+                int row = Integer.parseInt(coords[0]);
+                int col = Integer.parseInt(coords[1]);
 
                 if (selectedRow == -1) {
                     Piece p = board.getPiece(row, col);
                     if (p != null && p.getColor() == board.getCurrentTurn()) {
                         selectedRow = row;
                         selectedCol = col;
+                        selectedId = row + "-" + col;
                     }
                 } else {
                     boolean moved = board.makeMove(selectedRow, selectedCol, row, col);
@@ -47,6 +51,7 @@ public class Main extends JFrame {
                         if (p != null && p.getColor() == board.getCurrentTurn()) {
                             selectedRow = row;
                             selectedCol = col;
+                            selectedId = row + "-" + col;
                         } else {
                             selectedRow = -1;
                             selectedCol = -1;
@@ -56,47 +61,37 @@ public class Main extends JFrame {
                         selectedCol = -1;
                     }
                 }
-                // এই ইভেন্টটি ঘটার সাথে সাথেই UI রিফ্রেশ হবে, কোনো ব্যাকগ্রাউন্ড লুপ লাগবে না
-                boardPanel.repaint(); 
             }
-        });
 
-        add(boardPanel);
-        setVisible(true);
-    }
-
-    private void drawBoard(Graphics g) {
-        int size = boardPanel.getWidth() / 8;
-
-        for (int r = 0; r < 8; r++) {
-            for (int c = 0; c < 8; c++) {
-                if ((r + c) % 2 == 0) g.setColor(new Color(240, 217, 181));
-                else g.setColor(new Color(181, 136, 99));
-                g.fillRect(c * size, r * size, size, size);
-
-                if (r == selectedRow && c == selectedCol) {
-                    g.setColor(new Color(255, 255, 0, 128));
-                    g.fillRect(c * size, r * size, size, size);
-                }
-
-                // সম্ভাব্য চালের ঘরগুলো সবুজ বর্ডার দিয়ে হাইলাইট করবে
-                if (selectedRow != -1 && board.isValidMove(selectedRow, selectedCol, r, c)) {
-                    g.setColor(new Color(0, 255, 0, 180));
-                    g.drawRect(c * size + 3, r * size + 3, size - 6, size - 6);
-                }
-
-                Piece p = board.getPiece(r, c);
-                if (p != null) {
-                    g.setColor(p.getColor() == PieceColor.WHITE ? Color.WHITE : Color.BLACK);
-                    g.setFont(new Font("Arial", Font.BOLD, 18));
-                    String text = p.getType().name().substring(0, 2);
-                    g.drawString(text, c * size + size / 4, r * size + size / 2 + 6);
-                }
+            // রিয়েল-টাইম ইউজার ইন্টারফেস তৈরির রেসপন্স (HTML)
+            StringBuilder response = new StringBuilder();
+            response.append("<html><head><title>Chess Game</title><meta charset='UTF-8'>");
+            
+            // রিয়েল-টাইম আপডেটের জন্য অটো-রিফ্রেশ মেটা ট্যাগ (প্রতি সেকেন্ডে অপর প্লেয়ারের চাল চেক করবে)
+            response.append("<meta http-equiv='refresh' content='2;url=/'>");
+            
+            response.append("</head><body style='font-family:Arial, sans-serif; text-align:center; background-color:#2c3e50; color:#ecf0f1;'>");
+            response.append("<h2>Chess Game (Multiplayer/Computer)</h2>");
+            response.append("<h3>Current Turn: <span style='color:").append(board.getCurrentTurn() == PieceColor.WHITE ? "#fff" : "#000").append("; text-transform:uppercase;'>").append(board.getCurrentTurn()).append("</span></h3>");
+            
+            if (selectedRow != -1) {
+                response.append("<p style='color:#4caf50;'>Piece Selected! Green borders show valid moves.</p>");
+            } else {
+                response.append("<p>Click on your piece to see valid moves.</p>");
             }
+
+            // বোর্ড জেনারেট করা
+            response.append(board.toHtmlTable(selectedId, ""));
+            
+            response.append("<br><a href='/' style='color:#e74c3c; font-weight:bold; font-size:18px;'>Refresh Board</a>");
+            response.append("</body></html>");
+
+            byte[] bytes = response.toString().getBytes("UTF-8");
+            exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
+            exchange.sendResponseHeaders(200, bytes.length);
+            OutputStream os = exchange.getResponseBody();
+            os.write(bytes);
+            os.close();
         }
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(Main::new);
     }
 }
