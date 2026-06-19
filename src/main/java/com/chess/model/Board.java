@@ -6,7 +6,7 @@ public class Board {
 
     public Board() {
         board = new Piece[8][8];
-        currentTurn = PieceColor.WHITE; // খেলা হোয়াইট দিয়ে শুরু হবে
+        currentTurn = PieceColor.WHITE; 
         initializeBoard();
     }
 
@@ -43,7 +43,7 @@ public class Board {
         return currentTurn;
     }
 
-    // স্ট্যান্ডার্ড চেস নিয়ম অনুযায়ী চাল বৈধ কিনা চেক
+    // স্ট্যান্ডার্ড নিয়ম অনুযায়ী চালের বৈধতা চেক
     public boolean isValidMove(int fromRow, int fromCol, int toRow, int toCol) {
         Piece piece = getPiece(fromRow, fromCol);
         if (piece == null || piece.getColor() != currentTurn) return false;
@@ -103,5 +103,68 @@ public class Board {
             return true;
         }
         return false;
+    }
+
+    // ডকার এবং ওয়েব ইন্টারফেসে সুন্দর গ্রাফিক্স দেখানোর জন্য HTML রেন্ডারার
+    public String toHtmlTable(String selectedId, String validMovesJson) {
+        StringBuilder html = new StringBuilder();
+        html.append("<style>")
+            .append(".chess-board { border-collapse: collapse; margin: 20px auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3); } ")
+            .append(".chess-board td { width: 65px; height: 65px; text-align: center; vertical-align: middle; font-size: 30px; cursor: pointer; transition: 0.2s; } ")
+            .append(".light { background-color: #f0d9b5; } .dark { background-color: #b58863; } ")
+            .append(".selected { background-color: #ffeb3b !important; } ")
+            .append(".valid-move { box-shadow: inset 0 0 0 4px #4caf50; } ")
+            .append("a { text-decoration: none; display: block; width: 100%; height: 100%; line-height: 65px; } ")
+            .append("</style>");
+
+        html.append("<table class='chess-board'>");
+        for (int r = 0; r < 8; r++) {
+            html.append("<tr>");
+            for (int c = 0; c < 8; c++) {
+                Piece p = getPiece(r, c);
+                String cellId = r + "-" + c;
+                String cellClass = ((r + c) % 2 == 0) ? "light" : "dark";
+                
+                if (cellId.equals(selectedId)) {
+                    cellClass += " selected";
+                }
+                
+                // সিলেক্টেড ঘুটির জন্য কোন কোন ঘর বৈধ তা চেক করে ক্লাস বসানো
+                if (selectedId != null && !selectedId.isEmpty()) {
+                    String[] parts = selectedId.split("-");
+                    int fromR = Integer.parseInt(parts[0]);
+                    int fromC = Integer.parseInt(parts[1]);
+                    if (isValidMove(fromR, fromC, r, c)) {
+                        cellClass += " valid-move";
+                    }
+                }
+
+                html.append("<td class='").append(cellClass).append("'>");
+                html.append("<a href='/?click=").append(cellId).append("'>");
+                
+                if (p != null) {
+                    html.append(getUnicodeSymbol(p));
+                }
+                
+                html.append("</a></td>");
+            }
+            html.append("</tr>");
+        }
+        html.append("</table>");
+        return html.toString();
+    }
+
+    // টেক্সটের বদলে আসল সুন্দর চেস আইকন দেখানোর ইউনিকেড মেথড
+    private String getUnicodeSymbol(Piece p) {
+        boolean isWhite = p.getColor() == PieceColor.WHITE;
+        switch (p.getType()) {
+            case KING: return isWhite ? "<span style='color:#fff; filter: drop-shadow(1px 1px 1px #000);'>♔</span>" : "♚";
+            case QUEEN: return isWhite ? "<span style='color:#fff; filter: drop-shadow(1px 1px 1px #000);'>♕</span>" : "♛";
+            case ROOK: return isWhite ? "<span style='color:#fff; filter: drop-shadow(1px 1px 1px #000);'>♖</span>" : "♜";
+            case BISHOP: return isWhite ? "<span style='color:#fff; filter: drop-shadow(1px 1px 1px #000);'>♗</span>" : "♝";
+            case KNIGHT: return isWhite ? "<span style='color:#fff; filter: drop-shadow(1px 1px 1px #000);'>♘</span>" : "♞";
+            case PAWN: return isWhite ? "<span style='color:#fff; filter: drop-shadow(1px 1px 1px #000);'>♙</span>" : "♟";
+            default: return "";
+        }
     }
 }
