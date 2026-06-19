@@ -15,11 +15,15 @@ public class Main {
     private static int selectedCol = -1;
 
     public static void main(String[] args) throws IOException {
-        // ডকার নেটওয়ার্কের জন্য সার্ভারটি চালু করা হচ্ছে
-        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        // Render.io এর ডায়নামিক পোর্ট রিড করা (না থাকলে ডিফল্ট ৮০৮০)
+        String portStr = System.getenv("PORT");
+        int port = (portStr != null) ? Integer.parseInt(portStr) : 8080;
+
+        // ০.০.০.০ বাইন্ডিং ক্লাউড ডেপ্লয়মেন্টের জন্য বাধ্যতামূলক
+        HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
         server.createContext("/", new ChessHandler());
         server.setExecutor(null); 
-        System.out.println("Chess Web Server started successfully on port 8080!");
+        System.out.println("Chess Web Server started on port: " + port);
         server.start();
     }
 
@@ -63,26 +67,24 @@ public class Main {
                 selectedId = selectedRow + "-" + selectedCol;
             }
 
-            // রিয়েল-টাইম সিঙ্ক ইউআই রেসপন্স (HTML)
             StringBuilder response = new StringBuilder();
             response.append("<html><head><title>Chess Game</title><meta charset='UTF-8'>");
             
-            // রিয়েল-টাইম আপডেট ইন্টিগ্রেশন: প্রতি ১.৫ সেকেন্ডে অপর প্লেয়ারের চাল সিঙ্ক করবে
+            // রিয়েল-টাইম আপডেট: প্রতি ১.৫ সেকেন্ড পর পর ইন্টারফেস রিফ্রেশ হবে (থ্রেড ছাড়া রিয়েল টাইম)
             response.append("<meta http-equiv='refresh' content='1.5;url=/'>");
             
             response.append("</head><body style='font-family:sans-serif; text-align:center; background-color:#2c3e50; color:#ecf0f1;'>");
-            response.append("<h2>Chess Multiplayer Interface</h2>");
+            response.append("<h2>Chess Live Multiplayer Interface</h2>");
             response.append("<h3>Turn: <span style='color:").append(board.getCurrentTurn() == PieceColor.WHITE ? "#fff" : "#111").append("; background-color:#888; padding:2px 8px; border-radius:4px;'>").append(board.getCurrentTurn()).append("</span></h3>");
             
             if (selectedRow != -1) {
-                response.append("<p style='color:#2ecc71; font-weight:bold;'>Piece Selected! Green borders represent standard legal squares.</p>");
+                response.append("<p style='color:#2ecc71; font-weight:bold;'>Piece Selected! Green borders show standard legal squares.</p>");
             } else {
                 response.append("<p>Select a piece from your side to move.</p>");
             }
 
-            // জেনারেট করা বোর্ড ইন্টারফেসে যুক্ত করা
             response.append(board.toHtmlTable(selectedId, ""));
-            response.append("<br><a href='/' style='color:#e74c3c; font-weight:bold; font-size:16px;'>Manual Refresh</a>");
+            response.append("<br><a href='/' style='color:#e74c3c; font-weight:bold; text-decoration:none; font-size:16px;'>Manual Sync Board</a>");
             response.append("</body></html>");
 
             byte[] bytes = response.toString().getBytes("UTF-8");
