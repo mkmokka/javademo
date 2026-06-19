@@ -8,8 +8,6 @@ import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.util.HashMap;
-import java.util.Map;
 
 public class Main {
     private static Board board = new Board();
@@ -17,11 +15,11 @@ public class Main {
     private static int selectedCol = -1;
 
     public static void main(String[] args) throws IOException {
-        // ডকার কন্টেইনারের জন্য ৮০৮০ পোর্টে লাইটওয়েট ওয়েব সার্ভার চালু করা হচ্ছে
+        // ডকার নেটওয়ার্কের জন্য সার্ভারটি চালু করা হচ্ছে
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
         server.createContext("/", new ChessHandler());
         server.setExecutor(null); 
-        System.out.println("Chess Game Server started on http://localhost:8080");
+        System.out.println("Chess Web Server started successfully on port 8080!");
         server.start();
     }
 
@@ -61,29 +59,30 @@ public class Main {
                         selectedCol = -1;
                     }
                 }
+            } else if (selectedRow != -1) {
+                selectedId = selectedRow + "-" + selectedCol;
             }
 
-            // রিয়েল-টাইম ইউজার ইন্টারফেস তৈরির রেসপন্স (HTML)
+            // রিয়েল-টাইম সিঙ্ক ইউআই রেসপন্স (HTML)
             StringBuilder response = new StringBuilder();
             response.append("<html><head><title>Chess Game</title><meta charset='UTF-8'>");
             
-            // রিয়েল-টাইম আপডেটের জন্য অটো-রিফ্রেশ মেটা ট্যাগ (প্রতি সেকেন্ডে অপর প্লেয়ারের চাল চেক করবে)
-            response.append("<meta http-equiv='refresh' content='2;url=/'>");
+            // রিয়েল-টাইম আপডেট ইন্টিগ্রেশন: প্রতি ১.৫ সেকেন্ডে অপর প্লেয়ারের চাল সিঙ্ক করবে
+            response.append("<meta http-equiv='refresh' content='1.5;url=/'>");
             
-            response.append("</head><body style='font-family:Arial, sans-serif; text-align:center; background-color:#2c3e50; color:#ecf0f1;'>");
-            response.append("<h2>Chess Game (Multiplayer/Computer)</h2>");
-            response.append("<h3>Current Turn: <span style='color:").append(board.getCurrentTurn() == PieceColor.WHITE ? "#fff" : "#000").append("; text-transform:uppercase;'>").append(board.getCurrentTurn()).append("</span></h3>");
+            response.append("</head><body style='font-family:sans-serif; text-align:center; background-color:#2c3e50; color:#ecf0f1;'>");
+            response.append("<h2>Chess Multiplayer Interface</h2>");
+            response.append("<h3>Turn: <span style='color:").append(board.getCurrentTurn() == PieceColor.WHITE ? "#fff" : "#111").append("; background-color:#888; padding:2px 8px; border-radius:4px;'>").append(board.getCurrentTurn()).append("</span></h3>");
             
             if (selectedRow != -1) {
-                response.append("<p style='color:#4caf50;'>Piece Selected! Green borders show valid moves.</p>");
+                response.append("<p style='color:#2ecc71; font-weight:bold;'>Piece Selected! Green borders represent standard legal squares.</p>");
             } else {
-                response.append("<p>Click on your piece to see valid moves.</p>");
+                response.append("<p>Select a piece from your side to move.</p>");
             }
 
-            // বোর্ড জেনারেট করা
+            // জেনারেট করা বোর্ড ইন্টারফেসে যুক্ত করা
             response.append(board.toHtmlTable(selectedId, ""));
-            
-            response.append("<br><a href='/' style='color:#e74c3c; font-weight:bold; font-size:18px;'>Refresh Board</a>");
+            response.append("<br><a href='/' style='color:#e74c3c; font-weight:bold; font-size:16px;'>Manual Refresh</a>");
             response.append("</body></html>");
 
             byte[] bytes = response.toString().getBytes("UTF-8");
