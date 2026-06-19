@@ -43,7 +43,7 @@ public class Board {
         return currentTurn;
     }
 
-    // স্ট্যান্ডার্ড নিয়ম অনুযায়ী চালের বৈধতা চেক
+    // আন্তর্জাতিক নিয়ম অনুযায়ী চাল বৈধ কিনা চেক করা
     public boolean isValidMove(int fromRow, int fromCol, int toRow, int toCol) {
         Piece piece = getPiece(fromRow, fromCol);
         if (piece == null || piece.getColor() != currentTurn) return false;
@@ -99,18 +99,19 @@ public class Board {
         if (isValidMove(fromRow, fromCol, toRow, toCol)) {
             board[toRow][toCol] = board[fromRow][fromCol];
             board[fromRow][fromCol] = null;
+            // টার্ন অটো-সুইচ হবে
             currentTurn = (currentTurn == PieceColor.WHITE) ? PieceColor.BLACK : PieceColor.WHITE;
             return true;
         }
         return false;
     }
 
-    // ডকার এবং ওয়েব ইন্টারফেসে সুন্দর গ্রাফিক্স দেখানোর জন্য HTML রেন্ডারার
+    // ওয়েব ইউজার ইন্টারফেসে রিয়েল-টাইম বোর্ড দেখানোর মেথড
     public String toHtmlTable(String selectedId, String validMovesJson) {
         StringBuilder html = new StringBuilder();
         html.append("<style>")
-            .append(".chess-board { border-collapse: collapse; margin: 20px auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3); } ")
-            .append(".chess-board td { width: 65px; height: 65px; text-align: center; vertical-align: middle; font-size: 30px; cursor: pointer; transition: 0.2s; } ")
+            .append(".chess-board { border-collapse: collapse; margin: 20px auto; box-shadow: 0 5px 15px rgba(0,0,0,0.4); } ")
+            .append(".chess-board td { width: 65px; height: 65px; text-align: center; vertical-align: middle; font-size: 32px; cursor: pointer; } ")
             .append(".light { background-color: #f0d9b5; } .dark { background-color: #b58863; } ")
             .append(".selected { background-color: #ffeb3b !important; } ")
             .append(".valid-move { box-shadow: inset 0 0 0 4px #4caf50; } ")
@@ -129,7 +130,7 @@ public class Board {
                     cellClass += " selected";
                 }
                 
-                // সিলেক্টেড ঘুটির জন্য কোন কোন ঘর বৈধ তা চেক করে ক্লাস বসানো
+                // সিলেকশনের পর সম্ভাব্য চালের ঘরগুলোকে সবুজ বর্ডার দেওয়া হচ্ছে
                 if (selectedId != null && !selectedId.isEmpty()) {
                     String[] parts = selectedId.split("-");
                     int fromR = Integer.parseInt(parts[0]);
@@ -141,11 +142,9 @@ public class Board {
 
                 html.append("<td class='").append(cellClass).append("'>");
                 html.append("<a href='/?click=").append(cellId).append("'>");
-                
                 if (p != null) {
                     html.append(getUnicodeSymbol(p));
                 }
-                
                 html.append("</a></td>");
             }
             html.append("</tr>");
@@ -154,7 +153,6 @@ public class Board {
         return html.toString();
     }
 
-    // টেক্সটের বদলে আসল সুন্দর চেস আইকন দেখানোর ইউনিকেড মেথড
     private String getUnicodeSymbol(Piece p) {
         boolean isWhite = p.getColor() == PieceColor.WHITE;
         switch (p.getType()) {
