@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multiplayer Chess Cloud</title>
+    <title>Live Chess Cloud</title>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background: #222; color: #fff; margin: 0; padding: 20px; }
         .menu, .game-area { margin: 20px auto; max-width: 500px; padding: 20px; background: #333; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
@@ -17,7 +17,7 @@
     </style>
 </head>
 <body>
-    <h1>♟️ Advanced AI & Live Chess</h1>
+    <h1>♟️ Chess Cloud Game</h1>
     <div id="menu" class="menu">
         <button onclick="createGame('COMPUTER')">Play with Computer</button><br>
         <hr style="border: 0; border-top: 1px solid #555; margin: 20px 0;">
@@ -27,7 +27,7 @@
     </div>
     <div id="game-area" class="game-area" style="display:none;">
         <h3>Room Code: <span id="displayId" style="color: #ffeb3b; font-size: 24px;"></span></h3>
-        <h4 id="status">Status: Waiting...</h4>
+        <h4 id="status">Status: Loading...</h4>
         <div id="board" class="board"></div>
     </div>
     <script src="app.js"></script>
