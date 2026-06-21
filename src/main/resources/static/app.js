@@ -7,10 +7,12 @@ const pieceSymbols = {
     'PAWN': '♟', 'ROOK': '♜', 'KNIGHT': '♞', 'BISHOP': '♝', 'QUEEN': '♛', 'KING': '♚'
 };
 
+// API বেস পাথ রিটার্ন করার ফাংশন (যা আগে মিসিং ছিল)
+const getApiBase = () => `${window.location.protocol}//${window.location.host}`;
+
 function createGame(mode) {
     updateStatus("Creating session...");
-    // Render proxy ব্লক এড়াতে রিলেটিভ পাথ ব্যবহার
-    fetch(`/api/game/create/${mode}`, { 
+    fetch(`${getApiBase()}/api/game/create/${mode}`, { 
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
@@ -29,7 +31,7 @@ function createGame(mode) {
         }
     })
     .catch(err => {
-        console.error("Game Creation Mismatch:", err);
+        console.error("Game Creation Error:", err);
         updateStatus("Creation failed.");
     });
 }
@@ -41,7 +43,7 @@ function joinGame() {
         return;
     }
     updateStatus("Joining room...");
-    fetch(`/api/game/join/${code}`, { 
+    fetch(`${getApiBase()}/api/game/join/${code}`, { 
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
@@ -61,7 +63,7 @@ function joinGame() {
         }
     })
     .catch(err => {
-        console.error("Join Mismatch:", err);
+        console.error("Join Error:", err);
         updateStatus("Connection failed.");
     });
 }
@@ -78,24 +80,22 @@ function initGameSession(game) {
 }
 
 function connectWebSocket(id) {
-    // Render HTTPS এনভায়রনমেন্টের জন্য absolute ও secure ইউআরএল তৈরি
     const baseSecureUrl = window.location.origin + '/ws-chess';
-    console.log("Connecting SockJS secure instance to:", baseSecureUrl);
+    console.log("Connecting SockJS secure tunnel to:", baseSecureUrl);
     
-    // ব্রাউজারের মিক্সড-কনটেন্ট পলিসি বাইপাস করার জন্য অপশন অবজেক্ট যুক্ত করা হয়েছে
     const socket = new SockJS(baseSecureUrl, null, {transports: ['websocket', 'xhr-streaming', 'xhr-polling']});
     stompClient = Stomp.over(socket);
     stompClient.debug = null; 
     
     stompClient.connect({}, () => {
-        console.log("STOMP Live Tunnel Connected Successfully.");
+        console.log("STOMP Live Connected.");
         stompClient.subscribe(`/topic/game/${id}`, (message) => {
             const updatedGame = JSON.parse(message.body);
             renderBoard(updatedGame.board.grid);
             updateStatus(updatedGame.state.statusDescription);
         });
     }, (error) => {
-        console.error("STOMP Broker Mismatch:", error);
+        console.error("STOMP Error:", error);
         updateStatus("Sync lost. Retrying...");
         setTimeout(() => connectWebSocket(id), 5000);
     });
