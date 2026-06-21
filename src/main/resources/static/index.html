@@ -7,17 +7,23 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background: #222; color: #fff; margin: 0; padding: 20px; }
         .menu, .game-area { margin: 20px auto; max-width: 500px; padding: 20px; background: #333; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .board { display: grid; grid-template-columns: repeat(8, 50px); grid-template-rows: repeat(8, 50px); width: 400px; margin: 20px auto; border: 4px solid #444; background: #444; }
+        .board { display: grid; grid-template-columns: repeat(8, 50px); grid-template-rows: repeat(8, 50px); width: 400px; margin: 20px auto; border: 4px solid #444; background: #444; position: relative; }
         .square { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 32px; cursor: pointer; user-select: none; }
         .light { background: #f0d9b5; color: #000; }
         .dark { background: #b58863; color: #fff; }
         button { padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; margin: 10px; border: none; border-radius: 4px; background: #4caf50; color: white; transition: 0.2s; }
         button:hover { background: #45a049; }
         input { padding: 12px; font-size: 16px; border-radius: 4px; border: 1px solid #ccc; width: 60%; text-align: center; color: #000; background: #fff; }
+        
+        /* Promotion UI Overlay Modal Styling */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); }
+        .modal-content { background-color: #333; margin: 15% auto; padding: 20px; border: 2px solid #ffeb3b; border-radius: 8px; width: 300px; text-align: center; }
+        .promo-btn { font-size: 28px; padding: 10px 20px; margin: 5px; cursor: pointer; background: #444; border: 1px solid #fff; border-radius: 4px; color: #fff; }
+        .promo-btn:hover { background: #ffeb3b; color: #000; }
     </style>
 </head>
 <body>
-    <h1>♟️ Interactive Chess Cloud</h1>
+    <h1>♟️ Pro Chess Engine Cloud</h1>
     <div id="menu" class="menu">
         <button onclick="createGame('COMPUTER')">Play with Computer</button><br>
         <hr style="border: 0; border-top: 1px solid #555; margin: 20px 0;">
@@ -25,11 +31,24 @@
         <input type="text" id="roomCode" placeholder="ENTER UNIQUE CODE"><br>
         <button onclick="joinGame()" style="background: #2196f3;">Join Room</button>
     </div>
+    
     <div id="game-area" class="game-area" style="display:none;">
         <h3 id="code-header">Room Code: <span id="displayId" style="color: #ffeb3b; font-size: 24px;"></span></h3>
-        <h2 id="status" style="background:#444; padding:10px; border-radius:4px;">Status: Initializing...</h2>
+        <h2 id="status" style="background:#444; padding:10px; border-radius:4px; color:#ffeb3b;">Status: Initializing...</h2>
         <div id="board" class="board"></div>
     </div>
+
+    <!-- Pawn Promotion Modal Selector Dialog -->
+    <div id="promotion-modal" class="modal">
+        <div class="modal-content">
+            <h3>♟️ Choose Pawn Promotion</h3>
+            <button class="promo-btn" onclick="selectPromotion('QUEEN')">♛</button>
+            <button class="promo-btn" onclick="selectPromotion('ROOK')">♜</button>
+            <button class="promo-btn" onclick="selectPromotion('BISHOP')">♝</button>
+            <button class="promo-btn" onclick="selectPromotion('KNIGHT')">♞</button>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
