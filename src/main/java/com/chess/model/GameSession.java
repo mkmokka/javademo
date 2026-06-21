@@ -20,7 +20,7 @@ public class GameSession {
     }
 
     public synchronized boolean makeMove(Move move) {
-        if ("WAITING_FOR_PLAYER".equals(this.statusDescription)) return false;
+        if ("WAITING_FOR_PLAYER".equals(this.statusDescription) || this.statusDescription.startsWith("GAME_OVER")) return false;
         
         Piece piece = board.getPiece(move.from());
         if (piece == null || piece.getColor() != currentTurn) return false;
@@ -51,7 +51,6 @@ public class GameSession {
         else if (!blackKingExists) this.statusDescription = "GAME_OVER_WINNER_WHITE";
     }
 
-    // Standard POJO Getters and Setters for 100% Guaranteed JSON Conversion
     public String getGameId() { return gameId; }
     public void setGameId(String gameId) { this.gameId = gameId; }
 
