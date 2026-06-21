@@ -18,16 +18,13 @@ public class GameController {
         this.messagingTemplate = messagingTemplate;
     }
 
-    // ক্লাউড সিকিউরিটি পাসের জন্য একদম ক্লিন রুট এপিআই পাথ
     @PostMapping("/api/game/create/{mode}")
     public GameSession createGame(@PathVariable("mode") String mode) {
-        System.out.println("Executing Create Game Mode: " + mode);
         return gameService.createGame(mode);
     }
 
     @PostMapping("/api/game/join/{gameId}")
     public GameSession joinGame(@PathVariable("gameId") String gameId) {
-        System.out.println("Executing Join Game ID: " + gameId);
         GameSession session = gameService.joinGame(gameId);
         if (session != null) {
             messagingTemplate.convertAndSend("/topic/game/" + gameId, session);
