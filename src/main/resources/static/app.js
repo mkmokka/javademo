@@ -1,5 +1,5 @@
 var gameId = null;
-var stompClient = null;
+var wsClient = null;
 var selectedSquare = null;
 var boardState = null;
 
@@ -85,29 +85,46 @@ function initGameSession(game) {
     
     renderBoard(game.board.grid);
     updateStatus(game.state.statusDescription || "READY");
-    connectWebSocket(gameId);
+    connectNativeWebSocket(gameId);
 }
 
-function connectWebSocket(id) {
-    var baseSecureUrl = window.location.origin + '/ws-chess';
-    console.log("Connecting SockJS secure tunnel to:", baseSecureUrl);
+function connectNativeWebSocket(id) {
+    var protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    var wsUrl = protocol + window.location.host + '/ws-chess/websocket';
+    console.log("Connecting Pure Native WebSocket to:", wsUrl);
     
-    var socket = new SockJS(baseSecureUrl, null, {transports: ['websocket', 'xhr-streaming', 'xhr-polling']});
-    stompClient = Stomp.over(socket);
-    stompClient.debug = null; 
+    wsClient = new WebSocket(wsUrl);
     
-    stompClient.connect({}, function() {
-        console.log("STOMP Session Established Successfully.");
-        stompClient.subscribe('/topic/game/' + id, function(message) {
-            var updatedGame = JSON.parse(message.body);
-            renderBoard(updatedGame.board.grid);
-            updateStatus(updatedGame.state.statusDescription);
-        });
-    }, function(error) {
-        console.error("STOMP Connection error:", error);
-        updateStatus("Sync lost. Retrying...");
-        setTimeout(function() { connectWebSocket(id); }, 5000);
-    });
+    wsClient.onopen = function() {
+        console.log("Native WebSocket Tunnel Active.");
+        // Register connection session
+        var joinPayload = {
+            type: "SUBSCRIBE",
+            destination: "/topic/game/" + id
+        };
+        wsClient.send(JSON.stringify(joinPayload));
+    };
+    
+    wsClient.onmessage = function(event) {
+        try {
+            var game = JSON.parse(event.data);
+            if (game && game.board) {
+                renderBoard(game.board.grid);
+                updateStatus(game.state.statusDescription);
+            }
+        } catch(e) {
+            // Suppress binary STOMP heatbeats frames safely
+        }
+    };
+    
+    wsClient.onerror = function(err) {
+        console.error("WebSocket Mismatch:", err);
+    };
+    
+    wsClient.onclose = function() {
+        console.log("Sync lost. Reconnecting...");
+        setTimeout(function() { connectNativeWebSocket(id); }, 5000);
+    };
 }
 
 function renderBoard(grid) {
@@ -116,8 +133,8 @@ function renderBoard(grid) {
     if (!boardDiv) return;
     boardDiv.innerHTML = '';
     
-    for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
+    for (var r = 0; r < 8; r++) {
+        for (var c = 0; c < 8; c++) {
             var square = document.createElement('div');
             square.className = "square " + ((r + c) % 2 === 0 ? 'light' : 'dark');
             square.dataset.row = r;
@@ -129,7 +146,10 @@ function renderBoard(grid) {
                 square.style.color = (piece.color === 'WHITE') ? '#1e88e5' : '#d32f2f';
             }
             
-            square.onclick = function() { handleSquareClick(r, c); };
+            (function(row, col) {
+                square.onclick = function() { handleSquareClick(row, col); };
+            })(r, c);
+            
             boardDiv.appendChild(square);
         }
     }
@@ -148,8 +168,10 @@ function handleSquareClick(r, c) {
             to: { row: parseInt(r), col: parseInt(c) }
         };
         
-        if (stompClient && stompClient.connected) {
-            stompClient.send('/app/game/' + gameId + '/move', {}, JSON.stringify(move));
+        // Native clean message delivery packet format
+        if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+            var msg = "SEND\ndestination:/app/game/" + gameId + "/move\n\n" + JSON.stringify(move) + "\u0000";
+            wsClient.send(msg);
         }
         selectedSquare = null;
         renderBoard(boardState);
