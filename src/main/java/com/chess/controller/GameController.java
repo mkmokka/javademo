@@ -7,8 +7,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/game")
-@CrossOrigin(origins = "*", allowedHeaders = "*")
+@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.OPTIONS})
 public class GameController {
     
     private final GameService gameService;
@@ -19,16 +18,16 @@ public class GameController {
         this.messagingTemplate = messagingTemplate;
     }
 
-    // Path Variable ব্যবহারের ফলে ক্লাউড নেটওয়ার্কিং ট্রাফিক কোনো বাধা ছাড়াই পাস হবে
-    @PostMapping("/create/{mode}")
-    @ResponseBody
+    // ক্লাউড সিকিউরিটি পাসের জন্য একদম ক্লিন রুট এপিআই পাথ
+    @PostMapping("/api/game/create/{mode}")
     public GameSession createGame(@PathVariable("mode") String mode) {
+        System.out.println("Executing Create Game Mode: " + mode);
         return gameService.createGame(mode);
     }
 
-    @PostMapping("/join/{gameId}")
-    @ResponseBody
+    @PostMapping("/api/game/join/{gameId}")
     public GameSession joinGame(@PathVariable("gameId") String gameId) {
+        System.out.println("Executing Join Game ID: " + gameId);
         GameSession session = gameService.joinGame(gameId);
         if (session != null) {
             messagingTemplate.convertAndSend("/topic/game/" + gameId, session);
