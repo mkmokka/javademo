@@ -167,6 +167,7 @@ function calculateLocalValidMoves(r, c, piece) {
         });
     }
     else if (piece.type === "QUEEN") {
+        // ♛ মন্ত্রী সোজা (Vertical/Horizontal) এবং কোনাকুনি (Diagonal) সব ৮টি দিকেই নির্ভুলভাবে চলবে
         var queenPaths = [[-1, 0], [1, 0], [0, -1], [0, 1], [1, -1], [1, 1], [-1, 1], [-1, -1]];
         queenPaths.forEach(function(p) {
             var step = 1;
@@ -201,12 +202,12 @@ function calculateLocalValidMoves(r, c, piece) {
             }
         }
         if (piece.color === "WHITE" && r === 7 && c === 4) {
-            if (!boardState[7][5] && !boardState[7][6] && boardState[7][7] && boardState[7][7].type === "ROOK") moves.push({row: 7, col: 6, isCastling: true});
-            if (!boardState[7][3] && !boardState[7][2] && !boardState[7][1] && boardState[7][0] && boardState[7][0].type === "ROOK") moves.push({row: 7, col: 2, isCastling: true});
+            if (boardState[7][5] === null && boardState[7][6] === null && boardState[7][7] && boardState[7][7].type === "ROOK") moves.push({row: 7, col: 6, isCastling: true});
+            if (boardState[7][3] === null && boardState[7][2] === null && boardState[7][1] === null && boardState[7][0] && boardState[7][0].type === "ROOK") moves.push({row: 7, col: 2, isCastling: true});
         }
         if (piece.color === "BLACK" && r === 0 && c === 4) {
-            if (!boardState[0][5] && !boardState[0][6] && boardState[0][7] && boardState[0][7].type === "ROOK") moves.push({row: 0, col: 6, isCastling: true});
-            if (!boardState[0][3] && !boardState[0][2] && !boardState[0][1] && boardState[0][0] && boardState[0][0].type === "ROOK") moves.push({row: 0, col: 2, isCastling: true});
+            if (boardState[0][5] === null && boardState[0][6] === null && boardState[0][7] && boardState[0][7].type === "ROOK") moves.push({row: 0, col: 6, isCastling: true});
+            if (boardState[0][3] === null && boardState[0][2] === null && boardState[0][1] === null && boardState[0][0] && boardState[0][0].type === "ROOK") moves.push({row: 0, col: 2, isCastling: true});
         }
     }
     return moves;
@@ -244,10 +245,3 @@ function handleSquareClick(r, c) {
         }
         
         selectedSquare = null;
-        validMoves = [];
-        renderBoard(boardState);
-    }
-}
-
-function selectPromotion(type) {
-    if (!promotionPending) return;
