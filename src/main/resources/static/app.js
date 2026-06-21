@@ -135,7 +135,7 @@ function calculateLocalValidMoves(r, c, piece) {
         if (c < 7 && boardState[r+dir][c+1] && boardState[r+dir][c+1].color !== piece.color) moves.push({row: r+dir, col: c+1, isCastling: false});
     } 
     else if (piece.type === "ROOK") {
-        var straightPaths = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+        var straightPaths = [[1, 0], [-1, 0], [0, 1], [0, -1]];
         straightPaths.forEach(function(p) {
             var step = 1;
             while(true) {
@@ -151,7 +151,7 @@ function calculateLocalValidMoves(r, c, piece) {
         });
     }
     else if (piece.type === "BISHOP") {
-        var diagonalPaths = [[1, -1], [1, 1], [-1, 1], [-1, -1]];
+        var diagonalPaths = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
         diagonalPaths.forEach(function(p) {
             var step = 1;
             while(true) {
@@ -167,8 +167,7 @@ function calculateLocalValidMoves(r, c, piece) {
         });
     }
     else if (piece.type === "QUEEN") {
-        // ♛ মন্ত্রী সোজা (Vertical/Horizontal) এবং কোনাকুনি (Diagonal) সব ৮টি দিকেই নির্ভুলভাবে চলবে
-        var queenPaths = [[-1, 0], [1, 0], [0, -1], [0, 1], [1, -1], [1, 1], [-1, 1], [-1, -1]];
+        var queenPaths = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
         queenPaths.forEach(function(p) {
             var step = 1;
             while(true) {
@@ -184,7 +183,7 @@ function calculateLocalValidMoves(r, c, piece) {
         });
     }
     else if (piece.type === "KNIGHT") {
-        var offsets = [[2, -1], [2, 1], [-2, 1], [-2, -1], [1, -2], [1, 2], [-1, 2], [-1, -2]];
+        var offsets = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]];
         offsets.forEach(function(o) {
             var nr = r + o[0], nc = c + o[1];
             if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
@@ -245,3 +244,9 @@ function handleSquareClick(r, c) {
         }
         
         selectedSquare = null;
+        validMoves = [];
+        renderBoard(boardState);
+    }
+}
+
+function selectPromotion(type) {
