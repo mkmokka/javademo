@@ -7,9 +7,7 @@ const pieceSymbols = {
     'PAWN': '♟', 'ROOK': '♜', 'KNIGHT': '♞', 'BISHOP': '♝', 'QUEEN': '♛', 'KING': '♚'
 };
 
-// Base URL helper to ensure compatibility with Render's HTTPS/WSS environment
 const getApiBase = () => `${window.location.protocol}//${window.location.host}`;
-const getWsBase = () => `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws-chess`;
 
 function createGame(mode) {
     updateStatus("Creating session...");
@@ -25,12 +23,12 @@ function createGame(mode) {
         if (game && game.gameId) {
             initGameSession(game);
         } else {
-            alert("Failed to read Room Code from server schema.");
+            alert("Failed to create room instance.");
         }
     })
     .catch(err => {
         console.error("Creation Error:", err);
-        updateStatus("Failed to create room. Check console.");
+        updateStatus("Failed to create room.");
     });
 }
 
@@ -54,7 +52,6 @@ function joinGame() {
             initGameSession(game);
         } else {
             alert("Room not found or invalid code.");
-            updateStatus("Invalid Code");
         }
     })
     .catch(err => {
@@ -75,25 +72,25 @@ function initGameSession(game) {
 }
 
 function connectWebSocket(id) {
-    const wsUrl = getWsBase();
-    console.log("Connecting WebSocket to:", wsUrl);
-    const ws = new WebSocket(wsUrl);
+    // Standard secure/unsecure fallbacks using SockJS protocol container
+    const socketEndpoint = `${getApiBase()}/ws-chess`;
+    console.log("Initializing SockJS tunnel on:", socketEndpoint);
     
-    stompClient = Stomp.over(ws);
-    // Suppress heavy debug logs in browser console
-    stompClient.debug = null; 
+    const socket = new SockJS(socketEndpoint);
+    stompClient = Stomp.over(socket);
+    stompClient.debug = null; // Clean production environment logging
     
     stompClient.connect({}, () => {
-        console.log("WebSocket connected successfully.");
+        console.log("STOMP Session established over SockJS.");
         stompClient.subscribe(`/topic/game/${id}`, (message) => {
             const updatedGame = JSON.parse(message.body);
             renderBoard(updatedGame.board.grid);
             updateStatus(updatedGame.state.statusDescription);
         });
     }, (error) => {
-        console.error("STOMP Protocol Error:", error);
-        updateStatus("Live Sync Error. Retrying...");
-        setTimeout(() => connectWebSocket(id), 5000); // Auto reconnect
+        console.error("Transport Protocol failure:", error);
+        updateStatus("Sync lost. Reconnecting...");
+        setTimeout(() => connectWebSocket(id), 4000);
     });
 }
 
@@ -115,11 +112,8 @@ function renderBoard(grid) {
             const piece = grid[r][c];
             if (piece) {
                 square.innerText = pieceSymbols[piece.type] || '';
-                if (piece.color === 'WHITE') {
-                    square.style.color = '#3b82f6'; // Clean distinct blue
-                } else {
-                    square.style.color = '#ef4444'; // Clean distinct red
-                }
+                // Blue color for White side, Deep Crimson/Red for Black side
+                square.style.color = (piece.color === 'WHITE') ? '#1e88e5' : '#d32f2f';
             }
             
             square.onclick = () => handleSquareClick(r, c);
@@ -132,7 +126,6 @@ function handleSquareClick(r, c) {
     if (!selectedSquare) {
         if (boardState[r][c]) {
             selectedSquare = { row: r, col: c };
-            // Optional: highlight selected cell visually
             document.querySelector(`[data-row='${r}'][data-col='${c}']`).style.background = "#baca44";
         }
     } else {
@@ -144,9 +137,9 @@ function handleSquareClick(r, c) {
         if (stompClient && stompClient.connected) {
             stompClient.send(`/app/game/${gameId}/move`, {}, JSON.stringify(move));
         } else {
-            alert("Lost live connection to cloud server. Refresh page.");
+            alert("Reconnecting to Cloud Server...");
         }
         selectedSquare = null;
-        renderBoard(boardState); // Reset highlighting
+        renderBoard(boardState);
     }
 }
