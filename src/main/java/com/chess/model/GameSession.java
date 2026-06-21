@@ -2,6 +2,7 @@ package com.chess.model;
 
 import com.chess.patterns.state.*;
 import com.chess.patterns.strategy.*;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.UUID;
 
 public class GameSession {
@@ -10,7 +11,7 @@ public class GameSession {
     private GameState state;
     private MoveStrategy blackStrategy;
     private PieceColor currentTurn;
-    private final String mode; // "COMPUTER" or "FRIEND"
+    private final String mode;
 
     public GameSession(String mode) {
         this.gameId = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
@@ -33,11 +34,9 @@ public class GameSession {
         Piece piece = board.getPiece(move.from());
         if (piece == null || piece.getColor() != currentTurn) return false;
 
-        // চাল এবং রুলস ইমপ্লিমেন্টেশন (সিম্পল ভ্যালিডেশন)
         board.setPiece(move.to(), piece);
         board.setPiece(move.from(), null);
 
-        // কিং ক্যাপচার চেক (উইনার ডিটেকশন রুলস)
         checkWinner();
 
         if (state instanceof InProgressState) {
@@ -61,12 +60,22 @@ public class GameSession {
         else if (!blackKingExists) state = new GameOverState("WHITE");
     }
 
-    // Getters & Setters
+    @JsonProperty("gameId")
     public String getGameId() { return gameId; }
+
+    @JsonProperty("board")
     public Board getBoard() { return board; }
+
+    @JsonProperty("state")
     public GameState getState() { return state; }
+    
     public void setState(GameState state) { this.state = state; }
+    
     public MoveStrategy getBlackStrategy() { return blackStrategy; }
+    
+    @JsonProperty("currentTurn")
     public PieceColor getCurrentTurn() { return currentTurn; }
+    
+    @JsonProperty("mode")
     public String getMode() { return mode; }
 }
