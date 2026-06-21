@@ -16,9 +16,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Essential configuration for SockJS and cross-origin handling on Render cloud hosting
+        // Render ক্লাউডের HTTPS রিকোয়েস্ট সিকিউরলি পাস করার গ্যারান্টিড মেথড
         registry.addEndpoint("/ws-chess")
                 .setAllowedOriginPatterns("*")
-                .withSockJS();
+                .withSockJS()
+                .setClientLibraryUrl("https://jsdelivr.net");
     }
 }
