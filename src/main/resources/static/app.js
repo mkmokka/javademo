@@ -1,20 +1,14 @@
-// Global states wrapped cleanly
-window.gameId = null;
-window.stompClient = null;
-window.selectedSquare = null;
-window.boardState = null;
+var gameId = null;
+var stompClient = null;
+var selectedSquare = null;
+var boardState = null;
 
-const pieceSymbols = {
+var pieceSymbols = {
     'PAWN': '♟', 'ROOK': '♜', 'KNIGHT': '♞', 'BISHOP': '♝', 'QUEEN': '♛', 'KING': '♚'
 };
 
-// Safe fallback utility for URLs
-function getApiUrl(path) {
-    return window.location.origin + path;
-}
-
 function updateStatus(desc) {
-    const statusDiv = document.getElementById('status');
+    var statusDiv = document.getElementById('status');
     if (statusDiv) {
         statusDiv.innerText = "Status: " + (desc || "Processing...");
     }
@@ -22,9 +16,9 @@ function updateStatus(desc) {
 
 function createGame(mode) {
     updateStatus("Creating session...");
-    const url = getApiUrl('/api/game/create/' + mode);
+    var targetUrl = window.location.origin + '/api/game/create/' + mode;
     
-    fetch(url, { 
+    fetch(targetUrl, { 
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
@@ -39,26 +33,26 @@ function createGame(mode) {
         if (game && game.gameId) {
             initGameSession(game);
         } else {
-            alert("Mismatched response configuration from cloud.");
+            alert("Mismatched data model from server.");
         }
     })
     .catch(function(err) {
-        console.error("Game Creation Error:", err);
+        console.error("Game Creation Mismatch:", err);
         updateStatus("Creation failed.");
     });
 }
 
 function joinGame() {
-    const inputField = document.getElementById('roomCode');
-    const code = inputField ? inputField.value.trim().toUpperCase() : "";
+    var inputField = document.getElementById('roomCode');
+    var code = inputField ? inputField.value.trim().toUpperCase() : "";
     if (!code) {
         alert("Please enter a valid room code.");
         return;
     }
     updateStatus("Joining room...");
-    const url = getApiUrl('/api/game/join/' + code);
+    var targetUrl = window.location.origin + '/api/game/join/' + code;
 
-    fetch(url, { 
+    fetch(targetUrl, { 
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
@@ -84,52 +78,52 @@ function joinGame() {
 }
 
 function initGameSession(game) {
-    window.gameId = game.gameId;
+    gameId = game.gameId;
     document.getElementById('menu').style.display = 'none';
     document.getElementById('game-area').style.display = 'block';
-    document.getElementById('displayId').innerText = window.gameId;
+    document.getElementById('displayId').innerText = gameId;
     
     renderBoard(game.board.grid);
     updateStatus(game.state.statusDescription || "READY");
-    connectWebSocket(window.gameId);
+    connectWebSocket(gameId);
 }
 
 function connectWebSocket(id) {
-    const baseSecureUrl = window.location.origin + '/ws-chess';
+    var baseSecureUrl = window.location.origin + '/ws-chess';
     console.log("Connecting SockJS secure tunnel to:", baseSecureUrl);
     
-    const socket = new SockJS(baseSecureUrl, null, {transports: ['websocket', 'xhr-streaming', 'xhr-polling']});
-    window.stompClient = Stomp.over(socket);
-    window.stompClient.debug = null; 
+    var socket = new SockJS(baseSecureUrl, null, {transports: ['websocket', 'xhr-streaming', 'xhr-polling']});
+    stompClient = Stomp.over(socket);
+    stompClient.debug = null; 
     
-    window.stompClient.connect({}, function() {
-        console.log("STOMP Live Tunnel Connected.");
-        window.stompClient.subscribe('/topic/game/' + id, function(message) {
-            const updatedGame = JSON.parse(message.body);
+    stompClient.connect({}, function() {
+        console.log("STOMP Session Established Successfully.");
+        stompClient.subscribe('/topic/game/' + id, function(message) {
+            var updatedGame = JSON.parse(message.body);
             renderBoard(updatedGame.board.grid);
             updateStatus(updatedGame.state.statusDescription);
         });
     }, function(error) {
-        console.error("STOMP Error:", error);
+        console.error("STOMP Connection error:", error);
         updateStatus("Sync lost. Retrying...");
         setTimeout(function() { connectWebSocket(id); }, 5000);
     });
 }
 
 function renderBoard(grid) {
-    window.boardState = grid;
-    const boardDiv = document.getElementById('board');
+    boardState = grid;
+    var boardDiv = document.getElementById('board');
     if (!boardDiv) return;
     boardDiv.innerHTML = '';
     
     for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
-            const square = document.createElement('div');
+            var square = document.createElement('div');
             square.className = "square " + ((r + c) % 2 === 0 ? 'light' : 'dark');
             square.dataset.row = r;
             square.dataset.col = c;
             
-            const piece = grid[r][c];
+            var piece = grid[r][c];
             if (piece) {
                 square.innerText = pieceSymbols[piece.type] || '';
                 square.style.color = (piece.color === 'WHITE') ? '#1e88e5' : '#d32f2f';
@@ -142,22 +136,22 @@ function renderBoard(grid) {
 }
 
 function handleSquareClick(r, c) {
-    if (!window.selectedSquare) {
-        if (window.boardState[r][c]) {
-            window.selectedSquare = { row: r, col: c };
-            const activeSquare = document.querySelector("[data-row='" + r + "'][data-col='" + c + "']");
+    if (!selectedSquare) {
+        if (boardState[r][c]) {
+            selectedSquare = { row: r, col: c };
+            var activeSquare = document.querySelector("[data-row='" + r + "'][data-col='" + c + "']");
             if (activeSquare) activeSquare.style.background = "#baca44";
         }
     } else {
-        const move = {
-            from: { row: parseInt(window.selectedSquare.row), col: parseInt(window.selectedSquare.col) },
+        var move = {
+            from: { row: parseInt(selectedSquare.row), col: parseInt(selectedSquare.col) },
             to: { row: parseInt(r), col: parseInt(c) }
         };
         
-        if (window.stompClient && window.stompClient.connected) {
-            window.stompClient.send('/app/game/' + window.gameId + '/move', {}, JSON.stringify(move));
+        if (stompClient && stompClient.connected) {
+            stompClient.send('/app/game/' + gameId + '/move', {}, JSON.stringify(move));
         }
-        window.selectedSquare = null;
-        renderBoard(window.boardState);
+        selectedSquare = null;
+        renderBoard(boardState);
     }
 }
