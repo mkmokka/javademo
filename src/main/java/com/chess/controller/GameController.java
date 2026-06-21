@@ -7,8 +7,15 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@CrossOrigin(origins = "*")
+@RequestMapping("/api/game")
+// Render Cloud CORS Policy হ্যান্ডেল করার জন্য অফিশিয়াল ডিক্লেয়ারেশন
+@CrossOrigin(
+    origins = "*", 
+    allowedHeaders = "*", 
+    methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.OPTIONS}
+)
 public class GameController {
+    
     private final GameService gameService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -17,13 +24,21 @@ public class GameController {
         this.messagingTemplate = messagingTemplate;
     }
 
-    @PostMapping("/api/game/create")
-    public GameSession createGame(@RequestParam String mode) {
+    // HTTP Options প্রি-ফ্লাইট রিকোয়েস্ট সিকিউরিটি পাসের জন্য
+    @RequestMapping(value = "/**", method = RequestMethod.OPTIONS)
+    public void handleOptions() {}
+
+    @PostMapping("/create")
+    @ResponseBody
+    public GameSession createGame(@RequestParam("mode") String mode) {
+        System.out.println("Processing Game Creation Request. Mode: " + mode);
         return gameService.createGame(mode);
     }
 
-    @PostMapping("/api/game/join")
-    public GameSession joinGame(@RequestParam String gameId) {
+    @PostMapping("/join")
+    @ResponseBody
+    public GameSession joinGame(@RequestParam("gameId") String gameId) {
+        System.out.println("Processing Game Join Request. Room Code: " + gameId);
         GameSession session = gameService.joinGame(gameId);
         if (session != null) {
             messagingTemplate.convertAndSend("/topic/game/" + gameId, session);
