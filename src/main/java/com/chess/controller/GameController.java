@@ -8,12 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/game")
-// Render Cloud CORS Policy হ্যান্ডেল করার জন্য অফিশিয়াল ডিক্লেয়ারেশন
-@CrossOrigin(
-    origins = "*", 
-    allowedHeaders = "*", 
-    methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.OPTIONS}
-)
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class GameController {
     
     private final GameService gameService;
@@ -24,21 +19,16 @@ public class GameController {
         this.messagingTemplate = messagingTemplate;
     }
 
-    // HTTP Options প্রি-ফ্লাইট রিকোয়েস্ট সিকিউরিটি পাসের জন্য
-    @RequestMapping(value = "/**", method = RequestMethod.OPTIONS)
-    public void handleOptions() {}
-
-    @PostMapping("/create")
+    // Path Variable ব্যবহারের ফলে ক্লাউড নেটওয়ার্কিং ট্রাফিক কোনো বাধা ছাড়াই পাস হবে
+    @PostMapping("/create/{mode}")
     @ResponseBody
-    public GameSession createGame(@RequestParam("mode") String mode) {
-        System.out.println("Processing Game Creation Request. Mode: " + mode);
+    public GameSession createGame(@PathVariable("mode") String mode) {
         return gameService.createGame(mode);
     }
 
-    @PostMapping("/join")
+    @PostMapping("/join/{gameId}")
     @ResponseBody
-    public GameSession joinGame(@RequestParam("gameId") String gameId) {
-        System.out.println("Processing Game Join Request. Room Code: " + gameId);
+    public GameSession joinGame(@PathVariable("gameId") String gameId) {
         GameSession session = gameService.joinGame(gameId);
         if (session != null) {
             messagingTemplate.convertAndSend("/topic/game/" + gameId, session);
