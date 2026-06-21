@@ -9,24 +9,27 @@ const pieceSymbols = {
 
 function createGame(mode) {
     updateStatus("Creating session...");
-    // Render proxy ফ্রেন্ডলি রিলেটিভ পাথ ব্যবহার করা হলো
+    // Render proxy ব্লক এড়াতে রিলেটিভ পাথ ব্যবহার
     fetch(`/api/game/create/${mode}`, { 
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
     })
     .then(res => {
-        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
         return res.json();
     })
     .then(game => {
         if (game && game.gameId) {
             initGameSession(game);
         } else {
-            alert("Mismatched data scheme received.");
+            alert("Mismatched response from cloud server.");
         }
     })
     .catch(err => {
-        console.error("Creation Mismatch:", err);
+        console.error("Game Creation Mismatch:", err);
         updateStatus("Creation failed.");
     });
 }
@@ -40,10 +43,13 @@ function joinGame() {
     updateStatus("Joining room...");
     fetch(`/api/game/join/${code}`, { 
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
     })
     .then(res => {
-        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
         return res.json();
     })
     .then(game => {
@@ -51,10 +57,11 @@ function joinGame() {
             initGameSession(game);
         } else {
             alert("Room code not found.");
+            updateStatus("Invalid Code");
         }
     })
     .catch(err => {
-        console.error("Join Failure:", err);
+        console.error("Join Mismatch:", err);
         updateStatus("Connection failed.");
     });
 }
@@ -65,27 +72,31 @@ function initGameSession(game) {
     document.getElementById('game-area').style.display = 'block';
     document.getElementById('displayId').innerText = gameId;
     
-    connectWebSocket(gameId);
     renderBoard(game.board.grid);
     updateStatus(game.state.statusDescription || "READY");
+    connectWebSocket(gameId);
 }
 
 function connectWebSocket(id) {
-    // SockJS রিলেটিভ এন্ডপয়েন্ট বাইন্ডিং
-    const socket = new SockJS('/ws-chess');
+    // Render HTTPS এনভায়রনমেন্টের জন্য absolute ও secure ইউআরএল তৈরি
+    const baseSecureUrl = window.location.origin + '/ws-chess';
+    console.log("Connecting SockJS secure instance to:", baseSecureUrl);
+    
+    // ব্রাউজারের মিক্সড-কনটেন্ট পলিসি বাইপাস করার জন্য অপশন অবজেক্ট যুক্ত করা হয়েছে
+    const socket = new SockJS(baseSecureUrl, null, {transports: ['websocket', 'xhr-streaming', 'xhr-polling']});
     stompClient = Stomp.over(socket);
     stompClient.debug = null; 
     
     stompClient.connect({}, () => {
-        console.log("STOMP Tunnel Active.");
+        console.log("STOMP Live Tunnel Connected Successfully.");
         stompClient.subscribe(`/topic/game/${id}`, (message) => {
             const updatedGame = JSON.parse(message.body);
             renderBoard(updatedGame.board.grid);
             updateStatus(updatedGame.state.statusDescription);
         });
     }, (error) => {
-        console.error("STOMP error:", error);
-        updateStatus("Reconnecting sync...");
+        console.error("STOMP Broker Mismatch:", error);
+        updateStatus("Sync lost. Retrying...");
         setTimeout(() => connectWebSocket(id), 5000);
     });
 }
@@ -125,8 +136,8 @@ function handleSquareClick(r, c) {
         }
     } else {
         const move = {
-            from: { row: selectedSquare.row, col: selectedSquare.col },
-            to: { row: r, col: c }
+            from: { row: parseInt(selectedSquare.row), col: parseInt(selectedSquare.col) },
+            to: { row: parseInt(r), col: parseInt(c) }
         };
         
         if (stompClient && stompClient.connected) {
