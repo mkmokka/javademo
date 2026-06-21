@@ -7,11 +7,18 @@ import org.springframework.web.socket.config.annotation.*;
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+    
+    @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         config.enableSimpleBroker("/topic");
         config.setApplicationDestinationPrefixes("/app");
     }
+
+    @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws-chess").setAllowedOrigins("*");
+        // Essential configuration for SockJS and cross-origin handling on Render cloud hosting
+        registry.addEndpoint("/ws-chess")
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
     }
 }
