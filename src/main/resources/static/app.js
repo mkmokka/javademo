@@ -3,7 +3,7 @@ var selectedSquare = null;
 var boardState = null;
 var validMoves = [];
 var gameMode = null;
-var myColor = "WHITE"; // Default creating player is White
+var myColor = "WHITE"; 
 var currentTurnState = "WHITE";
 var promotionPending = null;
 
@@ -40,7 +40,7 @@ function joinGame() {
     var code = document.getElementById('roomCode').value.trim().toUpperCase();
     if (!code) return alert("Enter valid code");
     gameMode = "FRIEND";
-    myColor = "BLACK"; // Joining friend is always Black
+    myColor = "BLACK"; 
     fetch('/api/game/join/' + code, { method: 'POST' })
     .then(res => res.json())
     .then(game => { initGameSession(game); });
@@ -96,13 +96,12 @@ function renderBoard(grid) {
                 square.style.color = (piece.color === 'WHITE') ? '#1e88e5' : '#d32f2f';
             }
             
-            // বর্ডার হাইলাইট লজিক
             var moveInfo = validMoves.find(m => m.row === r && m.col === c);
             if (moveInfo) {
                 if (moveInfo.isCastling) {
-                    square.style.border = "4px solid #9c27b0"; // ক্যাসলিং এর জন্য বেগুনী বর্ডার
+                    square.style.border = "4px solid #9c27b0"; 
                 } else {
-                    square.style.border = "4px solid #4caf50"; // সাধারণ চালের জন্য সবুজ বارهای বর্ডার
+                    square.style.border = "4px solid #4caf50"; 
                 }
                 square.style.boxSizing = "border-box";
             } else {
@@ -134,9 +133,9 @@ function calculateLocalValidMoves(r, c, piece) {
         if (c > 0 && boardState[r+dir][c-1] && boardState[r+dir][c-1].color !== piece.color) moves.push({row: r+dir, col: c-1, isCastling: false});
         if (c < 7 && boardState[r+dir][c+1] && boardState[r+dir][c+1].color !== piece.color) moves.push({row: r+dir, col: c+1, isCastling: false});
     } 
-    else if (piece.type === "ROOK" || piece.type === "QUEEN") {
-        var paths = [[1,0], [-1,0], [0,1], [0,-1]];
-        paths.forEach(p => {
+    else if (piece.type === "ROOK") {
+        var straightPaths = [[-1,0], [1,0], [0,-1], [0,1]];
+        straightPaths.forEach(p => {
             var step = 1;
             while(true) {
                 var nr = r + p[0]*step, nc = c + p[1]*step;
@@ -150,9 +149,26 @@ function calculateLocalValidMoves(r, c, piece) {
             }
         });
     }
-    else if (piece.type === "BISHOP" || piece.type === "QUEEN") {
-        var paths = [[1,1], [1,-1], [-1,1], [-1,-1]];
-        paths.forEach(p => {
+    else if (piece.type === "BISHOP") {
+        var diagonalPaths = [[1,-1], [1,1], [-1,1], [-1,-1]];
+        diagonalPaths.forEach(p => {
+            var step = 1;
+            while(true) {
+                var nr = r + p[0]*step, nc = c + p[1]*step;
+                if (nr < 0 || nr >= 8 || nc < 0 || nc >= 8) break;
+                if (!boardState[nr][nc]) moves.push({row: nr, col: nc, isCastling: false});
+                else {
+                    if (boardState[nr][nc].color !== piece.color) moves.push({row: nr, col: nc, isCastling: false});
+                    break;
+                }
+                step++;
+            }
+        });
+    }
+    else if (piece.type === "QUEEN") {
+        // ♛ মন্ত্রী সোজা (Horizontal/Vertical) এবং কোনাকুনি (Diagonal) সব ৮টি দিকেই চালবে
+        var queenPaths = [[-1,0], [1,0], [0,-1], [0,1], [1,-1], [1,1], [-1,1], [-1,-1]];
+        queenPaths.forEach(p => {
             var step = 1;
             while(true) {
                 var nr = r + p[0]*step, nc = c + p[1]*step;
@@ -184,7 +200,6 @@ function calculateLocalValidMoves(r, c, piece) {
                 }
             }
         }
-        // ক্যাসলিং চালের স্পেশাল বর্ডার সাজেশন লজিক
         if (piece.color === "WHITE" && r === 7 && c === 4) {
             if (!boardState[7][5] && !boardState[7][6] && boardState[7][7] && boardState[7][7].type === "ROOK") moves.push({row: 7, col: 6, isCastling: true});
             if (!boardState[7][3] && !boardState[7][2] && !boardState[7][1] && boardState[7][0] && boardState[7][0].type === "ROOK") moves.push({row: 7, col: 2, isCastling: true});
@@ -204,7 +219,6 @@ function handleSquareClick(r, c) {
         var piece = boardState[r][c];
         if (!piece) return;
         
-        // 🔒 টার্ন লক প্রোটেকশন চেক
         if (piece.color !== currentTurnState || piece.color !== myColor) {
             alert("It's not your turn or not your piece!");
             return;
@@ -219,7 +233,6 @@ function handleSquareClick(r, c) {
         if (isMoveValid) {
             var activePiece = boardState[selectedSquare.row][selectedSquare.col];
             
-            // ♟️ বোড়ে শেষ লাইনে পৌঁছালে প্রোমোশন পপ-আপ ট্রিগার
             if (activePiece.type === "PAWN" && (r === 0 || r === 7)) {
                 promotionPending = { from: selectedSquare, to: { row: r, col: c } };
                 document.getElementById('promotion-modal').style.display = 'block';
@@ -241,19 +254,3 @@ function selectPromotion(type) {
     sendMoveToServer(promotionPending.from, promotionPending.to, type);
     promotionPending = null;
     selectedSquare = null;
-    validMoves = [];
-}
-
-function sendMoveToServer(from, to, promoType) {
-    var move = { from: from, to: to, promotionType: promoType };
-    fetch('/api/game/move/' + gameId, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(move)
-    })
-    .then(res => res.json())
-    .then(game => {
-        renderBoard(game.board.grid);
-        updateStatus(game.statusDescription, game.currentTurn, gameMode);
-    });
-}
