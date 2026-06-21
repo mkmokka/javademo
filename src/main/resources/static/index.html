@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multiplayer Chess Cloud</title>
-    <!-- SockJS and STOMP CDNs for maximum browser compatibility -->
+    <!-- SockJS-client library MUST be loaded before stomp.js -->
     <script src="https://cloudflare.com"></script>
     <script src="https://cloudflare.com"></script>
     <style>
@@ -15,7 +16,7 @@
         .dark { background: #b58863; color: #fff; }
         button { padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; margin: 10px; border: none; border-radius: 4px; background: #4caf50; color: white; transition: 0.2s; }
         button:hover { background: #45a049; }
-        input { padding: 12px; font-size: 16px; border-radius: 4px; border: 1px solid #ccc; width: 60%; text-align: center; }
+        input { padding: 12px; font-size: 16px; border-radius: 4px; border: 1px solid #ccc; width: 60%; text-align: center; color: #000; background: #fff; }
     </style>
 </head>
 <body>
