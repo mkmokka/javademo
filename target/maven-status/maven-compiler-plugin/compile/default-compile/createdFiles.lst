@@ -1,7 +1,0 @@
-com\chess\model\Board.class
-com\chess\model\PieceColor.class
-com\chess\model\Piece.class
-com\chess\model\Piece$1.class
-com\chess\Main.class
-com\chess\view\GameFrame.class
-com\chess\model\PieceType.class
