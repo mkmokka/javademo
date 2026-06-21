@@ -134,8 +134,8 @@ function calculateLocalValidMoves(r, c, piece) {
         if (c < 7 && boardState[r+dir][c+1] && boardState[r+dir][c+1].color !== piece.color) moves.push({row: r+dir, col: c+1, isCastling: false});
     } 
     else if (piece.type === "ROOK") {
-        var straightPaths = [[-1,0], [1,0], [0,-1], [0,1]];
-        straightPaths.forEach(p => {
+        var straightPaths = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+        straightPaths.forEach(function(p) {
             var step = 1;
             while(true) {
                 var nr = r + p[0]*step, nc = c + p[1]*step;
@@ -150,8 +150,8 @@ function calculateLocalValidMoves(r, c, piece) {
         });
     }
     else if (piece.type === "BISHOP") {
-        var diagonalPaths = [[1,-1], [1,1], [-1,1], [-1,-1]];
-        diagonalPaths.forEach(p => {
+        var diagonalPaths = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+        diagonalPaths.forEach(function(p) {
             var step = 1;
             while(true) {
                 var nr = r + p[0]*step, nc = c + p[1]*step;
@@ -166,9 +166,9 @@ function calculateLocalValidMoves(r, c, piece) {
         });
     }
     else if (piece.type === "QUEEN") {
-        // ♛ মন্ত্রী সোজা (Horizontal/Vertical) এবং কোনাকুনি (Diagonal) সব ৮টি দিকেই চালবে
-        var queenPaths = [[-1,0], [1,0], [0,-1], [0,1], [1,-1], [1,1], [-1,1], [-1,-1]];
-        queenPaths.forEach(p => {
+        // মন্ত্রী সোজা এবং কোনাকুনি সব ৮টি দিকেই নির্ভুলভাবে চালবে
+        var queenPaths = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+        queenPaths.forEach(function(p) {
             var step = 1;
             while(true) {
                 var nr = r + p[0]*step, nc = c + p[1]*step;
@@ -183,8 +183,8 @@ function calculateLocalValidMoves(r, c, piece) {
         });
     }
     else if (piece.type === "KNIGHT") {
-        var offsets = [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]];
-        offsets.forEach(o => {
+        var offsets = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]];
+        offsets.forEach(function(o) {
             var nr = r + o[0], nc = c + o[1];
             if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
                 if (!boardState[nr][nc] || boardState[nr][nc].color !== piece.color) moves.push({row: nr, col: nc, isCastling: false});
@@ -252,5 +252,3 @@ function selectPromotion(type) {
     if (!promotionPending) return;
     document.getElementById('promotion-modal').style.display = 'none';
     sendMoveToServer(promotionPending.from, promotionPending.to, type);
-    promotionPending = null;
-    selectedSquare = null;
