@@ -1,5 +1,4 @@
 var gameId = null;
-var wsClient = null;
 var selectedSquare = null;
 var boardState = null;
 
@@ -9,72 +8,25 @@ var pieceSymbols = {
 
 function updateStatus(desc) {
     var statusDiv = document.getElementById('status');
-    if (statusDiv) {
-        statusDiv.innerText = "Status: " + (desc || "Processing...");
-    }
+    if (statusDiv) statusDiv.innerText = "Status: " + (desc || "Processing...");
 }
 
 function createGame(mode) {
     updateStatus("Creating session...");
-    var targetUrl = window.location.origin + '/api/game/create/' + mode;
-    
-    fetch(targetUrl, { 
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
-    })
-    .then(function(res) {
-        if (!res.ok) throw new Error("HTTP Error: " + res.status);
-        return res.json();
-    })
-    .then(function(game) {
-        if (game && game.gameId) {
-            initGameSession(game);
-        } else {
-            alert("Mismatched data model from server.");
-        }
-    })
-    .catch(function(err) {
-        console.error("Game Creation Mismatch:", err);
-        updateStatus("Creation failed.");
-    });
+    fetch('/api/game/create/' + mode, { method: 'POST' })
+    .then(res => res.json())
+    .then(game => { initGameSession(game); })
+    .catch(err => { updateStatus("Creation failed."); });
 }
 
 function joinGame() {
-    var inputField = document.getElementById('roomCode');
-    var code = inputField ? inputField.value.trim().toUpperCase() : "";
-    if (!code) {
-        alert("Please enter a valid room code.");
-        return;
-    }
-    updateStatus("Joining room...");
-    var targetUrl = window.location.origin + '/api/game/join/' + code;
-
-    fetch(targetUrl, { 
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
-    })
-    .then(function(res) {
-        if (!res.ok) throw new Error("HTTP Error: " + res.status);
-        return res.json();
-    })
-    .then(function(game) {
-        if (game && game.gameId) {
-            initGameSession(game);
-        } else {
-            alert("Room code not found.");
-            updateStatus("Invalid Code");
-        }
-    })
-    .catch(function(err) {
-        console.error("Join Error:", err);
-        updateStatus("Connection failed.");
-    });
+    var code = document.getElementById('roomCode').value.trim().toUpperCase();
+    if (!code) return alert("Enter code");
+    updateStatus("Joining...");
+    fetch('/api/game/join/' + code, { method: 'POST' })
+    .then(res => res.json())
+    .then(game => { initGameSession(game); })
+    .catch(err => { updateStatus("Join failed."); });
 }
 
 function initGameSession(game) {
@@ -84,47 +36,22 @@ function initGameSession(game) {
     document.getElementById('displayId').innerText = gameId;
     
     renderBoard(game.board.grid);
-    updateStatus(game.state.statusDescription || "READY");
-    connectNativeWebSocket(gameId);
+    updateStatus(game.state.statusDescription);
+    
+    // প্রতি ২ সেকেন্ড পর পর ব্যাকএন্ড থেকে গেমের অবস্থা আপডেট করবে (No WebSockets needed!)
+    setInterval(refreshGameState, 2000);
 }
 
-function connectNativeWebSocket(id) {
-    var protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-    var wsUrl = protocol + window.location.host + '/ws-chess/websocket';
-    console.log("Connecting Pure Native WebSocket to:", wsUrl);
-    
-    wsClient = new WebSocket(wsUrl);
-    
-    wsClient.onopen = function() {
-        console.log("Native WebSocket Tunnel Active.");
-        // Register connection session
-        var joinPayload = {
-            type: "SUBSCRIBE",
-            destination: "/topic/game/" + id
-        };
-        wsClient.send(JSON.stringify(joinPayload));
-    };
-    
-    wsClient.onmessage = function(event) {
-        try {
-            var game = JSON.parse(event.data);
-            if (game && game.board) {
-                renderBoard(game.board.grid);
-                updateStatus(game.state.statusDescription);
-            }
-        } catch(e) {
-            // Suppress binary STOMP heatbeats frames safely
+function refreshGameState() {
+    if (!gameId) return;
+    fetch('/api/game/status/' + gameId)
+    .then(res => res.json())
+    .then(game => {
+        if (game) {
+            renderBoard(game.board.grid);
+            updateStatus(game.state.statusDescription);
         }
-    };
-    
-    wsClient.onerror = function(err) {
-        console.error("WebSocket Mismatch:", err);
-    };
-    
-    wsClient.onclose = function() {
-        console.log("Sync lost. Reconnecting...");
-        setTimeout(function() { connectNativeWebSocket(id); }, 5000);
-    };
+    });
 }
 
 function renderBoard(grid) {
@@ -133,12 +60,10 @@ function renderBoard(grid) {
     if (!boardDiv) return;
     boardDiv.innerHTML = '';
     
-    for (var r = 0; r < 8; r++) {
-        for (var c = 0; c < 8; c++) {
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
             var square = document.createElement('div');
             square.className = "square " + ((r + c) % 2 === 0 ? 'light' : 'dark');
-            square.dataset.row = r;
-            square.dataset.col = c;
             
             var piece = grid[r][c];
             if (piece) {
@@ -146,10 +71,7 @@ function renderBoard(grid) {
                 square.style.color = (piece.color === 'WHITE') ? '#1e88e5' : '#d32f2f';
             }
             
-            (function(row, col) {
-                square.onclick = function() { handleSquareClick(row, col); };
-            })(r, c);
-            
+            square.onclick = function() { handleSquareClick(r, c); };
             boardDiv.appendChild(square);
         }
     }
@@ -159,20 +81,25 @@ function handleSquareClick(r, c) {
     if (!selectedSquare) {
         if (boardState[r][c]) {
             selectedSquare = { row: r, col: c };
-            var activeSquare = document.querySelector("[data-row='" + r + "'][data-col='" + c + "']");
-            if (activeSquare) activeSquare.style.background = "#baca44";
+            document.querySelector(`[data-row='${r}'][data-col='${c}']`).style.background = "#baca44";
         }
     } else {
         var move = {
-            from: { row: parseInt(selectedSquare.row), col: parseInt(selectedSquare.col) },
-            to: { row: parseInt(r), col: parseInt(c) }
+            from: { row: selectedSquare.row, col: selectedSquare.col },
+            to: { row: r, col: c }
         };
         
-        // Native clean message delivery packet format
-        if (wsClient && wsClient.readyState === WebSocket.OPEN) {
-            var msg = "SEND\ndestination:/app/game/" + gameId + "/move\n\n" + JSON.stringify(move) + "\u0000";
-            wsClient.send(msg);
-        }
+        fetch('/api/game/move/' + gameId, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(move)
+        })
+        .then(res => res.json())
+        .then(game => {
+            renderBoard(game.board.grid);
+            updateStatus(game.state.statusDescription);
+        });
+        
         selectedSquare = null;
         renderBoard(boardState);
     }
