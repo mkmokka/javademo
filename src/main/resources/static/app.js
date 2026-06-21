@@ -11,7 +11,8 @@ const getApiBase = () => `${window.location.protocol}//${window.location.host}`;
 
 function createGame(mode) {
     updateStatus("Creating session...");
-    fetch(`${getApiBase()}/api/game/create?mode=${mode}`, { 
+    // Path variable format used to prevent cloud proxy blocking
+    fetch(`${getApiBase()}/api/game/create/${mode}`, { 
         method: 'POST',
         headers: { 'Accept': 'application/json' }
     })
@@ -23,12 +24,12 @@ function createGame(mode) {
         if (game && game.gameId) {
             initGameSession(game);
         } else {
-            alert("Failed to create room instance.");
+            alert("Server internal structure sync mismatch.");
         }
     })
     .catch(err => {
         console.error("Creation Error:", err);
-        updateStatus("Failed to create room.");
+        updateStatus("Creation failed. Retrying...");
     });
 }
 
@@ -39,7 +40,7 @@ function joinGame() {
         return;
     }
     updateStatus("Joining room...");
-    fetch(`${getApiBase()}/api/game/join?gameId=${code}`, { 
+    fetch(`${getApiBase()}/api/game/join/${code}`, { 
         method: 'POST',
         headers: { 'Accept': 'application/json' }
     })
@@ -51,7 +52,7 @@ function joinGame() {
         if (game && game.gameId) {
             initGameSession(game);
         } else {
-            alert("Room not found or invalid code.");
+            alert("Room code not found.");
         }
     })
     .catch(err => {
@@ -72,23 +73,20 @@ function initGameSession(game) {
 }
 
 function connectWebSocket(id) {
-    // Standard secure/unsecure fallbacks using SockJS protocol container
     const socketEndpoint = `${getApiBase()}/ws-chess`;
-    console.log("Initializing SockJS tunnel on:", socketEndpoint);
-    
     const socket = new SockJS(socketEndpoint);
     stompClient = Stomp.over(socket);
-    stompClient.debug = null; // Clean production environment logging
+    stompClient.debug = null;
     
     stompClient.connect({}, () => {
-        console.log("STOMP Session established over SockJS.");
+        console.log("WebSocket connected.");
         stompClient.subscribe(`/topic/game/${id}`, (message) => {
             const updatedGame = JSON.parse(message.body);
             renderBoard(updatedGame.board.grid);
             updateStatus(updatedGame.state.statusDescription);
         });
     }, (error) => {
-        console.error("Transport Protocol failure:", error);
+        console.error("Socket error:", error);
         updateStatus("Sync lost. Reconnecting...");
         setTimeout(() => connectWebSocket(id), 4000);
     });
@@ -112,7 +110,6 @@ function renderBoard(grid) {
             const piece = grid[r][c];
             if (piece) {
                 square.innerText = pieceSymbols[piece.type] || '';
-                // Blue color for White side, Deep Crimson/Red for Black side
                 square.style.color = (piece.color === 'WHITE') ? '#1e88e5' : '#d32f2f';
             }
             
@@ -136,8 +133,6 @@ function handleSquareClick(r, c) {
         
         if (stompClient && stompClient.connected) {
             stompClient.send(`/app/game/${gameId}/move`, {}, JSON.stringify(move));
-        } else {
-            alert("Reconnecting to Cloud Server...");
         }
         selectedSquare = null;
         renderBoard(boardState);
