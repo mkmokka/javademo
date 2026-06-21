@@ -11,12 +11,11 @@ public class Board {
     }
 
     public void resetBoard() {
-        // Pawns
+        // Pawns Initialization
         for (int i = 0; i < 8; i++) {
             grid[1][i] = PieceFactory.createPiece(PieceType.PAWN, PieceColor.BLACK);
             grid[6][i] = PieceFactory.createPiece(PieceType.PAWN, PieceColor.WHITE);
         }
-        // Rooks, Knights, Bishops
         setupRow(0, PieceColor.BLACK);
         setupRow(7, PieceColor.WHITE);
     }
@@ -27,17 +26,17 @@ public class Board {
         grid[row][1] = PieceFactory.createPiece(PieceType.KNIGHT, color);
         grid[row][6] = PieceFactory.createPiece(PieceType.KNIGHT, color);
         grid[row][2] = PieceFactory.createPiece(PieceType.BISHOP, color);
+        grid[row][5] = PieceFactory.createPiece(PieceType.BISHOP, color);
         grid[row][3] = PieceFactory.createPiece(PieceType.QUEEN, color);
         grid[row][4] = PieceFactory.createPiece(PieceType.KING, color);
-        grid[row][5] = PieceFactory.createPiece(PieceType.BISHOP, color);
     }
 
     public Piece getPiece(Position pos) {
-        return pos.isValid() ? grid[pos.row()][pos.col()] : null;
+        return (pos != null && pos.isValid()) ? grid[pos.row()][pos.col()] : null;
     }
 
     public void setPiece(Position pos, Piece piece) {
-        if (pos.isValid()) {
+        if (pos != null && pos.isValid()) {
             grid[pos.row()][pos.col()] = piece;
         }
     }
