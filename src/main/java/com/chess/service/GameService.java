@@ -1,7 +1,8 @@
 package com.chess.service;
 
 import com.chess.model.*;
-import com.chess.patterns.state.InProgressState;
+import com.chess.patterns.strategy.RandomBotStrategy;
+import com.chess.patterns.strategy.MoveStrategy;
 import org.springframework.stereotype.Service;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class GameService {
     private final Map<String, GameSession> games = new ConcurrentHashMap<>();
+    private final MoveStrategy botStrategy = new RandomBotStrategy();
 
     public GameSession createGame(String mode) {
         GameSession session = new GameSession(mode);
@@ -18,8 +20,8 @@ public class GameService {
 
     public GameSession joinGame(String gameId) {
         GameSession session = games.get(gameId);
-        if (session != null && "FRIEND".equalsIgnoreCase(session.getMode()) && !(session.getState() instanceof InProgressState)) {
-            session.setState(new InProgressState());
+        if (session != null && "FRIEND".equalsIgnoreCase(session.getMode()) && "WAITING_FOR_PLAYER".equals(session.getStatusDescription())) {
+            session.setStatusDescription("IN_PROGRESS");
         }
         return session;
     }
@@ -27,8 +29,9 @@ public class GameService {
     public GameSession executePlayerMove(String gameId, Move move) {
         GameSession session = games.get(gameId);
         if (session != null && session.makeMove(move)) {
+            // কম্পিউটার মোড এবং বটের চাল চালার লজিক
             if ("COMPUTER".equalsIgnoreCase(session.getMode()) && session.getCurrentTurn() == PieceColor.BLACK) {
-                Move botMove = session.getBlackStrategy().calculateMove(session.getBoard());
+                Move botMove = botStrategy.calculateMove(session.getBoard());
                 if (botMove != null) {
                     session.makeMove(botMove);
                 }
