@@ -32,8 +32,8 @@ function createGame(mode) {
     gameMode = mode;
     myColor = "WHITE"; 
     fetch('/api/game/create/' + mode, { method: 'POST' })
-    .then(res => res.json())
-    .then(game => { initGameSession(game); });
+    .then(function(res) { return res.json(); })
+    .then(function(game) { initGameSession(game); });
 }
 
 function joinGame() {
@@ -42,8 +42,8 @@ function joinGame() {
     gameMode = "FRIEND";
     myColor = "BLACK"; 
     fetch('/api/game/join/' + code, { method: 'POST' })
-    .then(res => res.json())
-    .then(game => { initGameSession(game); });
+    .then(function(res) { return res.json(); })
+    .then(function(game) { initGameSession(game); });
 }
 
 function initGameSession(game) {
@@ -53,10 +53,11 @@ function initGameSession(game) {
     
     var codeHeader = document.getElementById('code-header');
     if (gameMode === "COMPUTER") {
-        codeHeader.style.display = 'none';
+        if (codeHeader) codeHeader.style.display = 'none';
     } else {
-        codeHeader.style.display = 'block';
-        document.getElementById('displayId').innerText = gameId;
+        if (codeHeader) codeHeader.style.display = 'block';
+        var displayId = document.getElementById('displayId');
+        if (displayId) displayId.innerText = gameId;
     }
     
     renderBoard(game.board.grid);
@@ -68,8 +69,8 @@ function initGameSession(game) {
 function refreshGameState() {
     if (!gameId || promotionPending) return;
     fetch('/api/game/status/' + gameId)
-    .then(res => res.json())
-    .then(game => {
+    .then(function(res) { return res.json(); })
+    .then(function(game) {
         if (game && game.board && !selectedSquare) {
             renderBoard(game.board.grid);
             updateStatus(game.statusDescription, game.currentTurn, gameMode);
@@ -96,7 +97,7 @@ function renderBoard(grid) {
                 square.style.color = (piece.color === 'WHITE') ? '#1e88e5' : '#d32f2f';
             }
             
-            var moveInfo = validMoves.find(m => m.row === r && m.col === c);
+            var moveInfo = validMoves.find(function(m) { return m.row === r && m.col === c; });
             if (moveInfo) {
                 if (moveInfo.isCastling) {
                     square.style.border = "4px solid #9c27b0"; 
@@ -134,7 +135,7 @@ function calculateLocalValidMoves(r, c, piece) {
         if (c < 7 && boardState[r+dir][c+1] && boardState[r+dir][c+1].color !== piece.color) moves.push({row: r+dir, col: c+1, isCastling: false});
     } 
     else if (piece.type === "ROOK") {
-        var straightPaths = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+        var straightPaths = [[-1, 0], [1, 0], [0, -1], [0, 1]];
         straightPaths.forEach(function(p) {
             var step = 1;
             while(true) {
@@ -150,7 +151,7 @@ function calculateLocalValidMoves(r, c, piece) {
         });
     }
     else if (piece.type === "BISHOP") {
-        var diagonalPaths = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+        var diagonalPaths = [[1, -1], [1, 1], [-1, 1], [-1, -1]];
         diagonalPaths.forEach(function(p) {
             var step = 1;
             while(true) {
@@ -166,8 +167,7 @@ function calculateLocalValidMoves(r, c, piece) {
         });
     }
     else if (piece.type === "QUEEN") {
-        // মন্ত্রী সোজা এবং কোনাকুনি সব ৮টি দিকেই নির্ভুলভাবে চালবে
-        var queenPaths = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+        var queenPaths = [[-1, 0], [1, 0], [0, -1], [0, 1], [1, -1], [1, 1], [-1, 1], [-1, -1]];
         queenPaths.forEach(function(p) {
             var step = 1;
             while(true) {
@@ -183,7 +183,7 @@ function calculateLocalValidMoves(r, c, piece) {
         });
     }
     else if (piece.type === "KNIGHT") {
-        var offsets = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]];
+        var offsets = [[2, -1], [2, 1], [-2, 1], [-2, -1], [1, -2], [1, 2], [-1, 2], [-1, -2]];
         offsets.forEach(function(o) {
             var nr = r + o[0], nc = c + o[1];
             if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
@@ -228,14 +228,15 @@ function handleSquareClick(r, c) {
         validMoves = calculateLocalValidMoves(r, c, piece);
         renderBoard(boardState);
     } else {
-        var isMoveValid = validMoves.some(m => m.row === r && m.col === c);
+        var isMoveValid = validMoves.some(function(m) { return m.row === r && m.col === c; });
         
         if (isMoveValid) {
             var activePiece = boardState[selectedSquare.row][selectedSquare.col];
             
             if (activePiece.type === "PAWN" && (r === 0 || r === 7)) {
                 promotionPending = { from: selectedSquare, to: { row: r, col: c } };
-                document.getElementById('promotion-modal').style.display = 'block';
+                var modal = document.getElementById('promotion-modal');
+                if (modal) modal.style.display = 'block';
                 return;
             }
             
@@ -250,5 +251,3 @@ function handleSquareClick(r, c) {
 
 function selectPromotion(type) {
     if (!promotionPending) return;
-    document.getElementById('promotion-modal').style.display = 'none';
-    sendMoveToServer(promotionPending.from, promotionPending.to, type);
