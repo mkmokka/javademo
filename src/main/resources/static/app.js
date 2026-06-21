@@ -250,3 +250,38 @@ function handleSquareClick(r, c) {
 }
 
 function selectPromotion(type) {
+        if (!promotionPending) return;
+    
+    var modal = document.getElementById('promotion-modal');
+    if (modal) modal.style.display = 'none';
+    
+    sendMoveToServer(promotionPending.from, promotionPending.to, type);
+    
+    promotionPending = null;
+    selectedSquare = null;
+    validMoves = [];
+}
+
+function sendMoveToServer(from, to, promoType) {
+    var move = { 
+        from: from, 
+        to: to, 
+        promotionType: promoType 
+    };
+    
+    fetch('/api/game/move/' + gameId, {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify(move)
+    })
+    .then(function(res) { 
+        return res.json(); 
+    })
+    .then(function(game) {
+        renderBoard(game.board.grid);
+        updateStatus(game.statusDescription, game.currentTurn, gameMode);
+    });
+}
+
