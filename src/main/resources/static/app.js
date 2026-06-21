@@ -7,29 +7,27 @@ const pieceSymbols = {
     'PAWN': '♟', 'ROOK': '♜', 'KNIGHT': '♞', 'BISHOP': '♝', 'QUEEN': '♛', 'KING': '♚'
 };
 
-const getApiBase = () => `${window.location.protocol}//${window.location.host}`;
-
 function createGame(mode) {
     updateStatus("Creating session...");
-    // Path variable format used to prevent cloud proxy blocking
-    fetch(`${getApiBase()}/api/game/create/${mode}`, { 
+    // Render proxy ফ্রেন্ডলি রিলেটিভ পাথ ব্যবহার করা হলো
+    fetch(`/api/game/create/${mode}`, { 
         method: 'POST',
-        headers: { 'Accept': 'application/json' }
+        headers: { 'Content-Type': 'application/json' }
     })
     .then(res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
         return res.json();
     })
     .then(game => {
         if (game && game.gameId) {
             initGameSession(game);
         } else {
-            alert("Server internal structure sync mismatch.");
+            alert("Mismatched data scheme received.");
         }
     })
     .catch(err => {
-        console.error("Creation Error:", err);
-        updateStatus("Creation failed. Retrying...");
+        console.error("Creation Mismatch:", err);
+        updateStatus("Creation failed.");
     });
 }
 
@@ -40,12 +38,12 @@ function joinGame() {
         return;
     }
     updateStatus("Joining room...");
-    fetch(`${getApiBase()}/api/game/join/${code}`, { 
+    fetch(`/api/game/join/${code}`, { 
         method: 'POST',
-        headers: { 'Accept': 'application/json' }
+        headers: { 'Content-Type': 'application/json' }
     })
     .then(res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
         return res.json();
     })
     .then(game => {
@@ -56,7 +54,7 @@ function joinGame() {
         }
     })
     .catch(err => {
-        console.error("Join Error:", err);
+        console.error("Join Failure:", err);
         updateStatus("Connection failed.");
     });
 }
@@ -73,22 +71,22 @@ function initGameSession(game) {
 }
 
 function connectWebSocket(id) {
-    const socketEndpoint = `${getApiBase()}/ws-chess`;
-    const socket = new SockJS(socketEndpoint);
+    // SockJS রিলেটিভ এন্ডপয়েন্ট বাইন্ডিং
+    const socket = new SockJS('/ws-chess');
     stompClient = Stomp.over(socket);
-    stompClient.debug = null;
+    stompClient.debug = null; 
     
     stompClient.connect({}, () => {
-        console.log("WebSocket connected.");
+        console.log("STOMP Tunnel Active.");
         stompClient.subscribe(`/topic/game/${id}`, (message) => {
             const updatedGame = JSON.parse(message.body);
             renderBoard(updatedGame.board.grid);
             updateStatus(updatedGame.state.statusDescription);
         });
     }, (error) => {
-        console.error("Socket error:", error);
-        updateStatus("Sync lost. Reconnecting...");
-        setTimeout(() => connectWebSocket(id), 4000);
+        console.error("STOMP error:", error);
+        updateStatus("Reconnecting sync...");
+        setTimeout(() => connectWebSocket(id), 5000);
     });
 }
 
