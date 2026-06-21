@@ -1,35 +1,26 @@
 package com.chess.model;
 
-import com.chess.patterns.state.*;
-import com.chess.patterns.strategy.*;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.UUID;
 
 public class GameSession {
-    private final String gameId;
-    private final Board board;
-    private GameState state;
-    private MoveStrategy blackStrategy;
+    private String gameId;
+    private Board board;
+    private String statusDescription;
     private PieceColor currentTurn;
-    private final String mode;
+    private String mode;
+
+    public GameSession() {}
 
     public GameSession(String mode) {
         this.gameId = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         this.board = new Board();
         this.mode = mode;
         this.currentTurn = PieceColor.WHITE;
-        
-        if ("COMPUTER".equalsIgnoreCase(mode)) {
-            this.state = new InProgressState();
-            this.blackStrategy = new RandomBotStrategy();
-        } else {
-            this.state = new WaitingState();
-            this.blackStrategy = new UserMoveStrategy();
-        }
+        this.statusDescription = "COMPUTER".equalsIgnoreCase(mode) ? "IN_PROGRESS" : "WAITING_FOR_PLAYER";
     }
 
     public synchronized boolean makeMove(Move move) {
-        if (!state.canMove()) return false;
+        if ("WAITING_FOR_PLAYER".equals(this.statusDescription)) return false;
         
         Piece piece = board.getPiece(move.from());
         if (piece == null || piece.getColor() != currentTurn) return false;
@@ -39,7 +30,7 @@ public class GameSession {
 
         checkWinner();
 
-        if (state instanceof InProgressState) {
+        if ("IN_PROGRESS".equals(this.statusDescription)) {
             currentTurn = (currentTurn == PieceColor.WHITE) ? PieceColor.BLACK : PieceColor.WHITE;
         }
         return true;
@@ -56,26 +47,23 @@ public class GameSession {
                 }
             }
         }
-        if (!whiteKingExists) state = new GameOverState("BLACK");
-        else if (!blackKingExists) state = new GameOverState("WHITE");
+        if (!whiteKingExists) this.statusDescription = "GAME_OVER_WINNER_BLACK";
+        else if (!blackKingExists) this.statusDescription = "GAME_OVER_WINNER_WHITE";
     }
 
-    @JsonProperty("gameId")
+    // Standard POJO Getters and Setters for 100% Guaranteed JSON Conversion
     public String getGameId() { return gameId; }
+    public void setGameId(String gameId) { this.gameId = gameId; }
 
-    @JsonProperty("board")
     public Board getBoard() { return board; }
+    public void setBoard(Board board) { this.board = board; }
 
-    @JsonProperty("state")
-    public GameState getState() { return state; }
-    
-    public void setState(GameState state) { this.state = state; }
-    
-    public MoveStrategy getBlackStrategy() { return blackStrategy; }
-    
-    @JsonProperty("currentTurn")
+    public String getStatusDescription() { return statusDescription; }
+    public void setStatusDescription(String statusDescription) { this.statusDescription = statusDescription; }
+
     public PieceColor getCurrentTurn() { return currentTurn; }
-    
-    @JsonProperty("mode")
+    public void setCurrentTurn(PieceColor currentTurn) { this.currentTurn = currentTurn; }
+
     public String getMode() { return mode; }
+    public void setMode(String mode) { this.mode = mode; }
 }
