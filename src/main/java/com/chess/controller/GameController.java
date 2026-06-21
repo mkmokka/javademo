@@ -2,39 +2,36 @@ package com.chess.controller;
 
 import com.chess.model.*;
 import com.chess.service.GameService;
-import org.springframework.messaging.handler.annotation.*;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.OPTIONS})
+@RequestMapping("/api/game")
+@CrossOrigin(origins = "*")
 public class GameController {
     
     private final GameService gameService;
-    private final SimpMessagingTemplate messagingTemplate;
 
-    public GameController(GameService gameService, SimpMessagingTemplate messagingTemplate) {
+    public GameController(GameService gameService) {
         this.gameService = gameService;
-        this.messagingTemplate = messagingTemplate;
     }
 
-    @PostMapping("/api/game/create/{mode}")
-    public GameSession createGame(@PathVariable("mode") String mode) {
+    @PostMapping("/create/{mode}")
+    public GameSession createGame(@PathVariable String mode) {
         return gameService.createGame(mode);
     }
 
-    @PostMapping("/api/game/join/{gameId}")
-    public GameSession joinGame(@PathVariable("gameId") String gameId) {
-        GameSession session = gameService.joinGame(gameId);
-        if (session != null) {
-            messagingTemplate.convertAndSend("/topic/game/" + gameId, session);
-        }
-        return session;
+    @PostMapping("/join/{gameId}")
+    public GameSession joinGame(@PathVariable String gameId) {
+        return gameService.joinGame(gameId);
     }
 
-    @MessageMapping("/game/{gameId}/move")
-    public void handleMove(@DestinationVariable String gameId, @Payload Move move) {
-        GameSession updatedSession = gameService.executePlayerMove(gameId, move);
-        messagingTemplate.convertAndSend("/topic/game/" + gameId, updatedSession);
+    @GetMapping("/status/{gameId}")
+    public GameSession getStatus(@PathVariable String gameId) {
+        return gameService.joinGame(gameId); // সার্ভিস থেকে কারেন্ট স্টেট রিটার্ন করবে
+    }
+
+    @PostMapping("/move/{gameId}")
+    public GameSession handleMove(@PathVariable String gameId, @RequestBody Move move) {
+        return gameService.executePlayerMove(gameId, move);
     }
 }
